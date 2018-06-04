@@ -1,0 +1,19 @@
+{
+  "name": "burst-miner",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "node-gyp rebuild --python python2.7"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bluebird": "^3.5.1",
+    "lodash": "^4.17.10",
+    "nan": "^2.10.0",
+    "node-gyp": "^3.6.2",
+    "recursive-readdir": "^2.2.2",
+    "request-promise": "^4.2.2"
+  }
+}
