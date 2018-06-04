@@ -146,12 +146,12 @@ void mine(arg_example_method* pData){
       printf("%08X, currentPos: %llx\n", *(uint32_t*)pBuffer, (uint64_t)f.tellg());
 
       #ifdef __AVX2__        
-        procscoop_m256_8(signature, n + nonceSize + i, cacheSize, pBuffer, pData);// Process block AVX2
+        procscoop_m256_8(signature, n + nonceStart + i, cacheSize, pBuffer, pData);// Process block AVX2
       #else
         #ifdef __AVX__
-          procscoop_m_4(signature, n + nonceSize + i, cacheSize, pBuffer, pData);// Process block AVX
+          procscoop_m_4(signature, n + nonceStart + i, cacheSize, pBuffer, pData);// Process block AVX
         #else
-          procscoop_sph(signature, n + nonceSize + i, cacheSize, pBuffer, pData);// Process block SSE4
+          procscoop_sph(signature, n + nonceStart + i, cacheSize, pBuffer, pData);// Process block SSE4
         #endif
       #endif
     }
