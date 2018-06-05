@@ -5,7 +5,7 @@
 typedef struct {
   napi_deferred deferred;
 
-  int32_t isPoc2;
+  int64_t isPoc2;
   char path[PATH_MAX];
   char name[PATH_MAX];
   char generationSignature[128];
@@ -13,21 +13,29 @@ typedef struct {
   uint64_t baseTarget;
   uint64_t targetDeadline;
 
+  napi_async_context ctx;
   napi_ref callback;
-  napi_async_work callbackWorker;
+  napi_value jsThis;
 
-  // uint64_t result;  
+  struct {
+    uint64_t nonce;
+    uint64_t deadline;
+  } result;
   napi_async_work mainWorker;
 } arg_example_method;
 
 
 inline void procscoop_callback(void* pContext, uint64_t wertung, uint64_t nonce){
   arg_example_method *pData = (arg_example_method*)pContext;
-    
-  printf("procscoop_callback: %s %llu %llu %llu\n", pData->name, wertung / pData->baseTarget, pData->baseTarget, pData->targetDeadline);
+  
+  
   if (wertung / pData->baseTarget <= pData->targetDeadline){
-    
-    __asm__("int3");
+    printf("procscoop_callback: %s %llu %llu %llu %llu %llu\n", pData->name, nonce, wertung, wertung / pData->baseTarget, pData->baseTarget, pData->targetDeadline);      
+
+    if (nonce < pData->result.nonce || pData->result.nonce == 0){
+      pData->result.nonce = nonce;
+      pData->result.deadline = wertung / pData->baseTarget;
+    }
   }
   
   // pData->targetDeadline

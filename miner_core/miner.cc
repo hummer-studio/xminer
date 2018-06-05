@@ -1,10 +1,11 @@
 #include <string.h>
 #include <sstream>
-#include <iostream>
-#include <fstream>
+//#include <iostream>
+//#include <fstream>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <sys/mman.h>
 
 #include <node.h>
 #include <node_api.h>
@@ -18,14 +19,7 @@
 #include "shabal_asm.h"
 #include "miner.h"
 
-
-namespace Helper {
-// using v8::FunctionCallbackInfo;
-// using v8::Isolate;
-// using v8::Local;
-// using v8::Object;
-// using v8::String;
-// using v8::Value;
+namespace Mine {
 
 int xdigit(char const digit) {
   int val;
@@ -91,7 +85,7 @@ void mine(arg_example_method* pData){
   }
   
   printf("filename: %s poc2: %X\n", pData->name, pData->isPoc2);
-  printf("generationSignature: %s, height: %d\n", pData->generationSignature, pData->height);
+  printf("generationSignature: %s, height: %llu\n", pData->generationSignature, pData->height);
   printf("%llu_%llu_%llu_%llu\n", accountId, nonceStart, nonceSize, staggerSize);    
 
   // __asm__("int3");
@@ -109,19 +103,23 @@ void mine(arg_example_method* pData){
 
   uint32_t scoop = (((unsigned char)xcache[31]) + 256 * (unsigned char)xcache[30]) % 4096;
 
-  // fopen
-  // _fseeki64
+  // std::ifstream f;
+  // f.open(pData->path, std::ios::binary);
+  // printf("open: %08X\n", f.fail());
 
-  std::ifstream f;
-  f.open(pData->path, std::ios::binary);
+  auto f = open(pData->path, O_RDONLY);  
+  printf("open: %s %08X\n", pData->path, f);
+  
 
   // staggerSize = staggerSize / 8 * 8;
   uint64_t cacheSize = staggerSize;
   size_t bufferSize = staggerSize * 64;
-  char *pBuffer = new char[bufferSize];
+  bufferSize = (bufferSize - 1) / getpagesize() * getpagesize() + getpagesize();
+  
+  char *pBuffer = NULL; //new char[bufferSize];
   
 
-  printf("nonceSize: %08X, BufferSize: %08X, scoop: %08X\n", nonceSize, bufferSize, scoop);
+  printf("nonceSize: %llu, BufferSize: %llX, scoop: %08X\n", nonceSize, bufferSize, scoop);
 
   for (auto n = 0; n < nonceSize; n += staggerSize){
     auto start = 1L * n * 4096 * 64 + scoop * staggerSize * 64;
@@ -134,83 +132,147 @@ void mine(arg_example_method* pData){
         cacheSize = staggerSize - i;
       }
 
-      printf("seek: %llX %llX\n", (uint64_t)start + i * 64, (uint64_t)MirrorStart + i * 64);
-      f.seekg(start + i * 64);
+      size_t d1 = (start + i * 64) % getpagesize();
+      size_t d2 = getpagesize() - d1;
 
-      f.read(pBuffer, bufferSize);
-      if (bufferSize != f.gcount()){
-        printf("error: %08X %08X\n", bufferSize, f.gcount());
-        __asm__("int3");        
+      if (d1 > 0){
+        bufferSize += 4096 * 64;
       }
       
-      printf("%08X, currentPos: %llx\n", *(uint32_t*)pBuffer, (uint64_t)f.tellg());
+      pBuffer = (char*)mmap(NULL, bufferSize, PROT_READ, MAP_SHARED, f, start + i * 64 - d1);
+      if (pBuffer == MAP_FAILED){
+        perror("fuick");
+      }
+      printf("mmap: %08X\n", pBuffer);
+
+      // printf("seek: %llX %llX\n", (uint64_t)start + i * 64, (uint64_t)MirrorStart + i * 64);
+      // f.seekg(start + i * 64);
+      // printf("seekg: %08X\n", f.fail());
+
+      
+      // f.read(pBuffer, bufferSize);
+      // if (bufferSize != f.gcount()){
+      //   printf("error: %llX %llX\n", bufferSize, f.gcount());
+      //   __asm__("int3");        
+      // }
+      
+      // printf("%08X, currentPos: %llx\n", *(uint32_t*)pBuffer, (uint64_t)f.tellg());
 
       #ifdef __AVX2__        
-        procscoop_m256_8(signature, n + nonceStart + i, cacheSize, pBuffer, pData);// Process block AVX2
+        procscoop_m256_8(signature, n + nonceStart + i, cacheSize, pBuffer + d1, pData);// Process block AVX2
       #else
         #ifdef __AVX__
-          procscoop_m_4(signature, n + nonceStart + i, cacheSize, pBuffer, pData);// Process block AVX
+          procscoop_m_4(signature, n + nonceStart + i, cacheSize, pBuffer + d1, pData);// Process block AVX
         #else
-          procscoop_sph(signature, n + nonceStart + i, cacheSize, pBuffer, pData);// Process block SSE4
+          procscoop_sph(signature, n + nonceStart + i, cacheSize, pBuffer + d1, pData);// Process block SSE4
         #endif
       #endif
+
+      if (pBuffer){
+        munmap(pBuffer, bufferSize);
+      }      
     }
   }
 
-  if (pBuffer){
-    delete[] pBuffer;
+  if (f){
+    close(f);
   }
+
+  if (pBuffer){
+    //delete[] pBuffer;
+  }
+}
+
+napi_status napi_get_string_from_object(napi_env env, napi_value obj, const char *key, char *value, size_t size){
+  napi_status r;
+
+  napi_value result;
+  r = napi_get_named_property(env, obj, key, &result);
+
+  size_t cb;
+  return napi_get_value_string_utf8(env, result, value, size, &cb);  
+}
+
+napi_status napi_get_int64_from_object(napi_env env, napi_value obj, const char *key, int64_t *value){
+  napi_status r;
+
+  napi_value result;
+  r = napi_get_named_property(env, obj, key, &result);
+
+  return napi_get_value_int64(env, result, value);  
+}
+
+napi_status testCallback(napi_env env, arg_example_method *pData){
+  napi_status status;
+
+  // napi_handle_scope s1;
+  // status = napi_open_handle_scope(env, &s1);
+  // printf("napi_open_handle_scope: %08X\n", status);
+
+  napi_value global;
+  napi_get_global(env, &global);
+
+  napi_value callback;
+  napi_get_named_property(env, global, "fuckall", &callback);
+  printf("napi_get_named_property fuckall: %llX\n", callback);
+
+  napi_value r;  
+  // status = napi_call_function(env, global, callback, 0, NULL, &r);
+  // printf("napi_call_function status: %llX\n", status);
+  status = napi_make_callback(env, pData->ctx, global, callback, 0, NULL, &r);
+
+  
+
+  // napi_value callback;
+  // status = napi_get_reference_value(env, pData->callback, &callback);
+  // printf("napi_get_reference_value: %llX %llX\n", status, callback);
+
+  // status = napi_call_function(env, pData->jsThis, callback, 0, NULL, NULL);
+  // printf("status: %llX\n", status);
+  
+  
+  // napi_value result;
+  // status = napi_make_callback(env, pData->ctx, pData->jsThis, callback, 0, NULL , &result);
+  // printf("napi_make_callback: %llX %llX\n", status, result);
+
+  // napi_value result;
+  // status = napi_call_function(env, NULL, callback, 0, NULL, &result);
+  // printf("napi_call_function: %08X\n", status);    
+
+  const napi_extended_error_info *error = NULL;
+  napi_get_last_error_info(env, &error);
+  printf("error: %s\n", error->error_message);
+
+  return napi_ok;
 }
 
 napi_value TestResolveAsync(napi_env env, napi_callback_info info) {
   napi_status status;
   
-  napi_value args[8];
-  size_t argc = sizeof(args) / sizeof(napi_value);
-  status = napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-  
   arg_example_method *pData = new arg_example_method;  
+  memset(pData, 0, sizeof(arg_example_method));
 
-  size_t cb;
-  napi_get_value_string_utf8(env, args[0], pData->generationSignature, sizeof(pData->generationSignature), &cb);  
-  napi_get_value_int64(env, args[1], (int64_t*)&pData->baseTarget);
-  napi_get_value_int64(env, args[2], (int64_t*)&pData->height);
-  napi_get_value_int64(env, args[3], (int64_t*)&pData->targetDeadline);
+  napi_value args[2];
+  size_t argc = sizeof(args) / sizeof(napi_value);  
+  status = napi_get_cb_info(env, info, &argc, args, &pData->jsThis, nullptr);
+  printf("napi_get_cb_info: %llX\n", pData->jsThis);
   
-  napi_get_value_string_utf8(env, args[4], pData->path, sizeof(pData->path), &cb);  
-  napi_get_value_string_utf8(env, args[5], pData->name, sizeof(pData->name), &cb);
-  napi_get_value_int32(env, args[6], &pData->isPoc2);
-
-  napi_create_reference(env, args[7], 1, &pData->callback);  
-
-  // {
-  //   napi_value arg1, arg2;
-  //   status = napi_create_object(env, &arg1);
-  //   status = napi_create_object(env, &arg2);
-  //   napi_create_async_work(env, arg1, arg2, [](napi_env env, void* data){
-  //     arg_example_method* _data = (arg_example_method*)data;
-
-  //   }, [](napi_env env, napi_status status, void* data){
-  //     arg_example_method* _data = (arg_example_method*)data;
-
-  //     printf("fuck hahah\n");
-  //     napi_value callback;
-  //     napi_get_reference_value(env, _data->callback, &callback);
-
-  //     napi_value global;
-  //     napi_get_global(env, &global);
-  //     napi_call_function(env, global, callback, 0, NULL, NULL);
-
-  //     napi_delete_reference(env, _data->callback);
-  //     napi_delete_async_work(env, _data->callbackWorker);
-
-  //   }, pData, &pData->callbackWorker);
-  // }  
-
-  // napi_queue_async_work(env, pData->callbackWorker);
-
-
   
+  status = napi_get_string_from_object(env, args[0], "generationSignature", pData->generationSignature, sizeof(pData->generationSignature));
+  status = napi_get_int64_from_object(env, args[0], "baseTarget", (int64_t*)&pData->baseTarget);
+  status = napi_get_int64_from_object(env, args[0], "height", (int64_t*)&pData->height);
+  status = napi_get_int64_from_object(env, args[0], "targetDeadline", (int64_t*)&pData->targetDeadline);  
+  status = napi_get_string_from_object(env, args[0], "fullPath", pData->path, sizeof(pData->path));  
+  status = napi_get_string_from_object(env, args[0], "fileName", pData->name, sizeof(pData->name));
+  status = napi_get_int64_from_object(env, args[0], "isPoc2", (int64_t*)&pData->isPoc2);
+  
+  napi_create_reference(env, args[1], 1, &pData->callback);  
+
+  // const napi_extended_error_info *error = NULL;
+  // napi_get_last_error_info(env, &error);
+  // printf("error: %s\n", error->error_message);
+
+  printf("pthread_self: %llX\n", pthread_self());
   
   napi_value promise;
   napi_create_promise(env, &pData->deferred, &promise);
@@ -218,61 +280,63 @@ napi_value TestResolveAsync(napi_env env, napi_callback_info info) {
   napi_value arg1, arg2;
   napi_create_object(env, &arg1);
   napi_create_object(env, &arg2);
-  napi_create_async_work(env, arg1, arg2, [](napi_env env, void* data){      
-    arg_example_method* pData = (arg_example_method*)data;
-
-    napi_status status;
-
-    
-
-    // napi_value global;
-    // napi_get_global(env, &global);
-
-    // // printf("callback: %08X\n", pData->callback);
-    // // status = napi_call_function(env, global, pData->callback, 0, NULL, NULL);
-    // // printf("status: %d\n", status);
-
-    // napi_value callback;
-    // status = napi_get_reference_value(env, pData->callback, &callback);
-    // printf("%08X %08X\n", status, callback);
-
-    // status = napi_call_function(env, global, callback, 0, NULL, NULL);
-    // printf("%08X %08X\n", status, callback);
-
-    // for (auto i = 0; i < 10; i++){
-    //   // printf("%08X\n", callback);
-
-    //   napi_value global;
-    //   napi_get_global(env, &global);
-    //   napi_call_function(env, global, callback, 0, NULL, NULL);
+  napi_create_async_work(env, arg1, arg2, [](napi_env env, void* data){
+    // if (1){
+    //   napi_throw_type_error(env, "123", "haha");
+    //   return;
     // }
 
-    printf("begin mine\n");
+    printf("pthread_self execute: %llX\n", pthread_self());
+    arg_example_method* pData = (arg_example_method*)data;
+
+    // testCallback(env, pData);    
+    
+
     mine(pData);
-
+    printf("execute done.\n");
+  
   }, [](napi_env env, napi_status nd_status, void* data){
-    napi_status status;
-    arg_example_method *pData = (arg_example_method*)data;    
+    printf("completed status: %llX\n", nd_status);
+    printf("pthread_self completed: %llX\n", pthread_self());
 
-    napi_value error, error_code, error_msg;
-    napi_value result;
-    const napi_extended_error_info* err_info_ptr;
+    napi_status status;
+    arg_example_method *pData = (arg_example_method*)data;              
+
+    // testCallback(env, pData);    
     
     if (nd_status != napi_ok){
+      const napi_extended_error_info* err_info_ptr;
       status = napi_get_last_error_info(env, &err_info_ptr);
+
+      napi_value error, error_code, error_msg;
       status = napi_create_string_utf8(env, "NAPI_ERROR", NAPI_AUTO_LENGTH, &error_code);
       status = napi_create_string_utf8(env, err_info_ptr->error_message, NAPI_AUTO_LENGTH, &error_msg);
+
       status = napi_create_error(env, error_code, error_msg, &error);
       status = napi_reject_deferred(env, pData->deferred, error);
     } else {
-      // status = napi_create_double(env, pData->result, &result);
-      status = napi_resolve_deferred(env, pData->deferred, result);
+      napi_value result;      
+      napi_create_object(env, &result);
+
+      napi_value resultNonce;
+      napi_create_int64(env, pData->result.nonce, &resultNonce);
+
+      napi_value resultDeadline;
+      napi_create_int64(env, pData->result.deadline, &resultDeadline);
+      
+      napi_set_named_property(env, result, "nonce", resultNonce);    
+      napi_set_named_property(env, result, "deadline", resultDeadline);    
+
+      napi_resolve_deferred(env, pData->deferred, result);
     }
 
     if (pData){
+      napi_delete_reference(env, pData->callback);
       napi_delete_async_work(env, pData->mainWorker);
       delete pData;
-    }  
+    }
+
+    printf("that's all.\n");
   }, pData, &pData->mainWorker);
   
   napi_queue_async_work(env, pData->mainWorker);
