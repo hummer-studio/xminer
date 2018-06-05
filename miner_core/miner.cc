@@ -1,3 +1,6 @@
+#if defined _WIN32
+#end
+
 #include <string.h>
 #include <sstream>
 //#include <iostream>
