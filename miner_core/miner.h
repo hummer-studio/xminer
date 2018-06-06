@@ -2,13 +2,24 @@
 #define memcpy_s(x1, x2, x3, x4) memcpy(x1, x3, x4)
 #endif
 
+#define ENV_MINE_STATUS "mineStatus"
+
+#define HASH_SIZE             32
+#define HASHES_PER_SCOOP      2
+#define SCOOP_SIZE            (HASHES_PER_SCOOP * HASH_SIZE)
+#define SCOOPS_PER_PLOT       4096 // original 1MB/plot = 16384
+#define PLOT_SIZE             (SCOOPS_PER_PLOT * SCOOP_SIZE)
+
+#define MAX_CACHE_SCOOP_SIZE       (1024 * 1024 * 512 / SCOOP_SIZE)
+#define POC2_START_BLOCK      502000
+
 typedef struct {
   napi_deferred deferred;
 
-  int64_t isPoc2;
-  char path[PATH_MAX];
-  char name[PATH_MAX];
-  char generationSignature[128];
+  bool isPoc2;
+  std::string path;
+  std::string name;
+  std::string generationSignature;
   uint64_t height;
   uint64_t baseTarget;
   uint64_t targetDeadline;
@@ -20,33 +31,27 @@ typedef struct {
   struct {
     uint64_t nonce;
     uint64_t deadline;
+    uint64_t best;
   } result;
   napi_async_work mainWorker;
-} arg_example_method;
+} CALLBACK_CONTEXT;
 
 
-inline void procscoop_callback(void* pContext, uint64_t wertung, uint64_t nonce){
-  arg_example_method *pData = (arg_example_method*)pContext;
-  
-  
-  if (wertung / pData->baseTarget <= pData->targetDeadline){
-    printf("procscoop_callback: %s %llu %llu %llu %llu %llu\n", pData->name, nonce, wertung, wertung / pData->baseTarget, pData->baseTarget, pData->targetDeadline);      
+inline void procscoop_callback(CALLBACK_CONTEXT* pData, uint64_t wertung, uint64_t nonce){
+  printf("procscoop_callback: %s %llu %llu %llu %llu %llu\n", pData->name.c_str(), nonce, wertung, wertung / pData->baseTarget, pData->baseTarget, pData->targetDeadline);
 
-    if (nonce < pData->result.nonce || pData->result.nonce == 0){
+  if (wertung / pData->baseTarget <= pData->targetDeadline){    
+    
+    if (wertung < pData->result.best || pData->result.best == 0){
+      pData->result.best = wertung;
       pData->result.nonce = nonce;
       pData->result.deadline = wertung / pData->baseTarget;
     }
-  }
-  
-  // pData->targetDeadline
-
-  // if ((*wertung / baseTarget) <= bests[acc].targetDeadline) {
-  //   if (bests[acc].nonce == 0 || *wertung < bests[acc].best) {
-
+  } 
 }
 
 inline void procscoop_m_4(char *signature, unsigned long long const nonce,
-                          unsigned long long const n, char const *const data, void* context) {
+                          unsigned long long const n, char const *const data, CALLBACK_CONTEXT *context) {
   char const *cache;
   char sig0[32 + 64];
   char sig1[32 + 64];
@@ -119,7 +124,7 @@ inline void procscoop_m_4(char *signature, unsigned long long const nonce,
 
 inline void procscoop_m256_8(char *signature, unsigned long long const nonce,
                              unsigned long long const n,
-                             char const *const data, void* context) {
+                             char const *const data, CALLBACK_CONTEXT *context) {
   char const *cache;
   char sig0[32 + 64];
   char sig1[32 + 64];
@@ -230,7 +235,7 @@ inline void procscoop_m256_8(char *signature, unsigned long long const nonce,
 }
 
 inline void procscoop_sph(char *signature, const unsigned long long nonce,
-                          const unsigned long long n, char const *const data, void* context) {
+                          const unsigned long long n, char const *const data, CALLBACK_CONTEXT *context) {
   char const *cache;
   char sig[32 + 64];
   cache = data;
@@ -269,7 +274,7 @@ inline void procscoop_sph(char *signature, const unsigned long long nonce,
 }
 
 inline void procscoop_asm(char *signature, const unsigned long long nonce,
-                          const unsigned long long n, char const *const data, void* context) {
+                          const unsigned long long n, char const *const data, CALLBACK_CONTEXT *context) {
   char const *cache;
   char sig[32 + 64];
   cache = data;
@@ -301,4 +306,36 @@ inline void procscoop_asm(char *signature, const unsigned long long nonce,
     //   }
     // }
   }
+}
+
+inline int xdigit(char const digit) {
+  int val;
+  if ('0' <= digit && digit <= '9')
+    val = digit - '0';
+  else if ('a' <= digit && digit <= 'f')
+    val = digit - 'a' + 10;
+  else if ('A' <= digit && digit <= 'F')
+    val = digit - 'A' + 10;
+  else
+    val = -1;
+  return val;
+}
+
+inline size_t xstr2strr(char *buf, size_t const bufsize, const char *const in) {
+  if (!in) return 0;  // missing input string
+
+  size_t inlen = (size_t)strlen(in);
+  if (inlen % 2 != 0) inlen--;  // hex string must even sized
+
+  size_t i, j;
+  for (i = 0; i < inlen; i++)
+    if (xdigit(in[i]) < 0) return 0;  // bad character in hex string
+
+  if (!buf || bufsize < inlen / 2 + 1) return 0;  // no buffer or too small
+
+  for (i = 0, j = 0; i < inlen; i += 2, j++)
+    buf[j] = xdigit(in[i]) * 16 + xdigit(in[i + 1]);
+
+  buf[inlen / 2] = '\0';
+  return inlen / 2 + 1;
 }
