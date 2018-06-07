@@ -1,22 +1,23 @@
+'use strict'
+
 const dirRecursive = require("recursive-readdir"),
-          bluebird = require("bluebird"),
-                 _ = require('lodash'),
-             async = require("async"),
+            //  aigle = require("aigle"),
+            //      _ = require('lodash'),
+            //  async = require("neo-async"),
               path = require("path"),
+                fs = require("fs"),
            request = require("request-promise"),
              addon = require("./build/Release/miner");
 
-const POOL_URL = "http://0-100-pool.burst.cryptoguru.org:8124";
-const ENV_MINE_STATUS = "mineStatus"
+
+const HTTP_TIMEOUT = 1000 * 15             
+const REFRESH_MINE_INFO_TIME = 1000 * 15             
+const MAX_RETRY_TIMES = 10
+const ENV_CURRENT_HEIGHT = "currentHeight"
+const BASE_DIFFICULTY = 4398046511104
 let _currentHeight = 0
 
-function fuckall(){
-  console.log("fuck all callback");
-}
-
-//4398046511104 / 240 / baseTarget
-
-async function worker(files){
+async function test(){  
   // process.env['env1'] = "nima"
   // setTimeout(() => {
   //   process.env['env1'] = "nima2"
@@ -46,103 +47,179 @@ async function worker(files){
   // })      
 
   // return 
-
-  const r = await request.defaults({timeout: 1000 * 30})({
-    url: `${POOL_URL}/burst?requestType=getMiningInfo`,
-    json: true,
-  })
-
-  console.log(r)
-
-  if (_currentHeight == r.height){
-    return
-  }
-  
-  await new Promise((resolve, reject) => {
-    async.retry({
-      times: Number.MAX_VALUE,
-      interval: 200,
-    }, (next) => {
-      console.log(`test mine status: ${process.env[ENV_MINE_STATUS]}`)
-
-      if (_.isEmpty(process.env[ENV_MINE_STATUS])){
-        next()
-        return
-      }
-      
-      if (process.env[ENV_MINE_STATUS] == 'running'){
-        process.env[ENV_MINE_STATUS] = 'abort'      
-      }      
-
-      next("keep waiting.")
-    }, (err, result) => {
-      if (err){
-        reject(err)
-        return
-      }
-
-      resolve(result)
-    })
-  })
-
-  // setTimeout(() => {
-  //   console.log("abort");
-  //   process.env[ENV_MINE_STATUS] = "abort"
-  // }, 1000 * 10)
-
-  _currentHeight = r.height
-
-  process.env[ENV_MINE_STATUS] == 'running'
-  const f = new Promise((resolve, reject) => {
-    async.eachLimit(files, 2, (n, next) => {
-      if (process.env[ENV_MINE_STATUS] == "abort"){
-        next()
-        return
-      }
-
-      console.log(n)
-
-      addon.run({
-        generationSignature: r.generationSignature, 
-        baseTarget: r.baseTarget,
-        height: r.height,
-        targetDeadline: _.min([r.targetDeadline, 3600 * 24 * 30 * 8]),
-        fullPath: n.fullPath, 
-        fileName: n.fileName, 
-        isPoc2: n.isPoc2,
-      }, function (err, n){        
-        if (err){
-          console.error(err);
-
-          next(err)          
-          return
-        }
-
-        if (r.height < _currentHeight){
-          return
-        }
-
-        console.log(n)
-        next()
-      })
-
-    }, (err) => {
-      process.env[ENV_MINE_STATUS] = null
-
-      if (err){
-        reject(err)
-        return
-      }
-
-      resolve()
-    })
-  })
-
-  await f  
 }
 
-(async function(){
-  const r = await bluebird.resolve(dirRecursive("/Volumes/plots")).then((n) => {
+async function worker(files){
+  //await test()
+  
+  const r = await aigle.promisify(async.retry)({
+    times: 10,
+    interval: 1000,
+  }, (done) => {
+    request.defaults({timeout: HTTP_TIMEOUT})({
+      url: `${SETTINGS.pool_address}/burst`,
+      qs: {
+        requestType: 'getMiningInfo'
+      },
+      json: true,
+    }).then((n) => done(null, n)).catch(done)
+  })
+
+  if (_currentHeight >= r.height){
+    logger.info(`not found more height`)
+    return
+  }
+
+  logger.info(r)    
+
+  
+  const difficulty = BASE_DIFFICULTY / 240 / r.baseTarget
+  const targetDeadline = SETTINGS.targetDeadline == 0 ? r.targetDeadline : _.min([r.targetDeadline, SETTINGS.targetDeadline])      
+  const maxReader = SETTINGS.max_reader == 0 ? _.min([SETTINGS.plots.length, 3]) : SETTINGS.max_reader  
+  let best = targetDeadline * r.baseTarget
+  _currentHeight = r.height
+
+  process.env[ENV_CURRENT_HEIGHT] = r.height
+  const f = aigle.promisify(async.eachLimit)(files, maxReader, (n, next) => {
+    if (Number(process.env[ENV_CURRENT_HEIGHT]) != r.height){      
+      logger.info("sssssssssssssssssssssssssssssssskip the block");
+      next()
+      return
+    }
+
+    logger.info(n)
+
+    addon.run({
+      generationSignature: r.generationSignature, 
+      baseTarget: r.baseTarget,
+      height: r.height,
+      targetDeadline: targetDeadline,
+      fullPath: n.fullPath, 
+      fileName: n.fileName, 
+      isPoc2: n.isPoc2,
+    }, function (err, rr){              
+      if (err){
+        logger.error(err);
+
+        next(err)          
+        return
+      }
+
+      if (r.height < _currentHeight){
+        next()
+        return
+      }
+
+      if (rr.best >= best){
+        logger.info(`skip this record.`)
+        next()
+        return
+      }
+
+      if (rr.nonce == 0){
+        next()
+        return
+      }
+
+      best = rr.best
+
+      logger.info(rr);        
+
+      aigle.promisify(async.retry)({
+        times: MAX_RETRY_TIMES,
+        interval: 1000,
+      }, (done) => {
+        if (rr.best > best){
+          logger.info("skip this request")
+
+          done()
+          return
+        }
+
+        request.defaults({timeout: HTTP_TIMEOUT})({
+          url: `${SETTINGS.pool_address}/burst`,
+          qs: {
+            requestType: 'submitNonce',
+            nonce: rr.nonce,
+            accountId: _.first(n.fileName.split("_")),
+            blockheight: r.height,            
+          },
+          json: true
+        }).then((r1) => done(null, r1)).catch(done)
+      }).then((n) => {
+        logger.info(n)
+      }).catch(() => {
+        logger.error("error")
+      })
+              
+      next()
+    })
+  })
+
+  await f
+
+  logger.info(`mine done`)
+}
+
+async function socketIO(){
+  // const s = require("socket.io-client")("wss://0-100-pool.burst.cryptoguru.org",  {path: "/ws"})  
+
+  
+  // s.on('connect', function(){
+  //   log('connect')
+  // });
+  // s.on('event', function(data){
+  //   log(data)
+  // });
+
+  // s.on('disconnect', function(){
+  //   log("dis")
+  // });
+
+  // s.on("connect_error", function(err){
+  //   log(err);
+  // })
+
+  var WebSocketClient = require('websocket').client;
+
+  var client = new WebSocketClient();
+
+  client.on('connectFailed', function(error) {
+      console.log('Connect Error: ' + error.toString());
+  });
+
+  client.on('connect', function(connection) {
+      console.log('WebSocket Client Connected');
+      connection.on('error', function(error) {
+          console.log("Connection Error: " + error.toString());
+      });
+      connection.on('close', function() {
+          console.log('echo-protocol Connection Closed');
+      });
+      connection.on('message', function(message) {
+          if (message.type === 'utf8') {
+              console.log("Received: '" + message.utf8Data + "'");
+          }
+      });
+      
+      // function sendNumber() {
+      //     if (connection.connected) {
+      //         var number = Math.round(Math.random() * 0xFFFFFF);
+      //         connection.sendUTF(number.toString());
+      //         setTimeout(sendNumber, 1000);
+      //     }
+      // }
+      // sendNumber();
+  });
+
+  // client.connect('wss://0-100-pool.burst.cryptoguru.org/ws', 'echo-protocol');
+  client.connect('wss://0-100-pool.burst.cryptoguru.org/ws');
+}
+
+require("./config")(async function () {
+  // return socketIO()
+
+  const r = await aigle.resolve(dirRecursive("/Volumes/plots")).then((n) => {
     return _.flatten(n)
   }).map((fullPath) => {
 
@@ -156,29 +233,20 @@ async function worker(files){
     return {
       fullPath,
       fileName,
-
-      // accountId,
-      // nonceStart,
-      // nonceSize,
-      // staggerSize: staggerSize || nonceSize,
+      fileSize: fs.statSync(fullPath).size,
       isPoc2: staggerSize == null,
     }    
-  }).then(_.compact).then((n) => {
+  }).then(_.compact).sortBy((n) => -n.fileSize).then((n) => {
+    return _.uniqBy(n, m => m.fullPath)
+  }).then((n) => {
     // return _.filter(n, m => /_389096_/.test(m.fileName))
-    // return n
+    return n
     // return _.filter(n, m => /_800000000_/.test(m.fileName))
-    return _.filter(n, m => /_810000000_40960$/.test(m.fileName))
+    // return _.filter(n, m => /_810000000_40960$/.test(m.fileName))
     // return _.filter(n, m => /_810000000_40960_40960$/.test(m.fileName))
     // return [_.find(n, m => /_4096$/.test(m.fileName))]
     // return _.filter(n, m => m.isPoc2)
   })
 
-  // console.log(r)
-
-  worker(r)
-
-  // for (;;){
-  //   worker(r)
-  // }
-
-})()
+  setInterval(() => worker(r),  REFRESH_MINE_INFO_TIME)
+})

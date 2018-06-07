@@ -21,6 +21,8 @@
 #include "shabal_asm.h"
 #include "miner.h"
 
+bool _debug = false;
+
 namespace Mine {
 
 void mine(CALLBACK_CONTEXT* pData){  
@@ -39,11 +41,12 @@ void mine(CALLBACK_CONTEXT* pData){
     sscanf(pData->name.c_str(), "%llu_%llu_%llu_%llu", &accountId, &nonceStart, &nonceSize, &staggerSize);
   }
 
-  boolean_t isPoc2Compat = pData->isPoc2 != (pData->height >= POC2_START_BLOCK);
+  auto currentHeight = std::to_string(pData->height);
+  auto isPoc2Compat = pData->isPoc2 != (pData->height >= POC2_START_BLOCK);
   
-  printf("filename: %s poc2: %X\n", pData->name.c_str(), pData->isPoc2);
-  printf("generationSignature: %s, height: %llu\n", pData->generationSignature.c_str(), pData->height);
-  printf("%llu_%llu_%llu_%llu\n", accountId, nonceStart, nonceSize, staggerSize);    
+  log(printf("filename: %s poc2: %X\n", pData->name.c_str(), pData->isPoc2));
+  log(printf("generationSignature: %s, height: %llu\n", pData->generationSignature.c_str(), pData->height));
+  log(printf("%llu_%llu_%llu_%llu\n", accountId, nonceStart, nonceSize, staggerSize));
 
   // __asm__("int3");
 
@@ -61,7 +64,7 @@ void mine(CALLBACK_CONTEXT* pData){
   uint32_t scoop = (((unsigned char)xcache[31]) + 256 * (unsigned char)xcache[30]) % 4096;  
 
   auto f = open(pData->path.c_str(), O_RDONLY);  
-  printf("open: %s %08X\n", pData->path.c_str(), f);
+  log(printf("open: %s %08X\n", pData->path.c_str(), f));
   
 
   // staggerSize = staggerSize / 8 * 8;
@@ -75,7 +78,7 @@ void mine(CALLBACK_CONTEXT* pData){
     pBuffer2 = new char[bufferSize * SCOOP_SIZE];
   }
 
-  printf("nonceSize: %llu, BufferSize: %llX, scoop: %08X\n", nonceSize, bufferSize, scoop);
+  log(printf("nonceSize: %llu, BufferSize: %llX, scoop: %08X\n", nonceSize, bufferSize, scoop));
 
   for (auto n = 0; n < nonceSize; n += staggerSize){
     auto start = 1L * n * PLOT_SIZE + scoop * staggerSize * SCOOP_SIZE;
@@ -83,16 +86,15 @@ void mine(CALLBACK_CONTEXT* pData){
 
     for (auto i = 0; i < staggerSize; i += bufferSize){
 
-      auto mineStatus = getenv(ENV_MINE_STATUS);
-      if (mineStatus && strcmp(mineStatus, "abort") == 0){
+      if (strcmp(currentHeight.c_str(), getenv(ENV_CURRENT_HEIGHT)) != 0){
         break;
-      }
+      }          
       
       if (i + bufferSize > staggerSize){
         bufferSize = staggerSize - i;
       }
 
-      printf("loop: %llX, %llX, %llX\n", i, bufferSize, staggerSize);
+      log(printf("loop: %llX, %llX, %llX\n", i, bufferSize, staggerSize));
 
       // size_t d1 = (start + i * 64) % getpagesize();
       // size_t d2 = getpagesize() - d1;
@@ -107,7 +109,7 @@ void mine(CALLBACK_CONTEXT* pData){
       // }
       // printf("mmap: %08X\n", pBuffer);
 
-      printf("seek: %llX %llX\n", (uint64_t)start + i * SCOOP_SIZE, (uint64_t)MirrorStart + i * SCOOP_SIZE);
+      log(printf("seek: %llX %llX\n", (uint64_t)start + i * SCOOP_SIZE, (uint64_t)MirrorStart + i * SCOOP_SIZE));
       lseek(f, start + i * SCOOP_SIZE, SEEK_SET);
       // f.seekg(start + i * 64);
       // printf("seekg: %08X\n", f.fail());
@@ -115,7 +117,7 @@ void mine(CALLBACK_CONTEXT* pData){
       
       size_t cb = read(f, pBuffer, bufferSize * SCOOP_SIZE);
       if (cb != bufferSize * SCOOP_SIZE){
-        printf("error: %llX %llX\n", bufferSize * SCOOP_SIZE, cb);
+        log(printf("error: %llX %llX\n", bufferSize * SCOOP_SIZE, cb));
         __asm__("int3");        
       }
 
@@ -123,7 +125,7 @@ void mine(CALLBACK_CONTEXT* pData){
         lseek(f, MirrorStart + i * SCOOP_SIZE, SEEK_SET);
         cb = read(f, pBuffer2, bufferSize * SCOOP_SIZE);
         if (cb != bufferSize * SCOOP_SIZE){
-          printf("error: %llX %llX\n", bufferSize * SCOOP_SIZE, cb);
+          log(printf("error: %llX %llX\n", bufferSize * SCOOP_SIZE, cb));
           __asm__("int3");        
         }
 
@@ -363,24 +365,25 @@ protected:
     //   SetError("test error");
     // }
     
-    printf("pthread_self: %llX\n", pthread_self());    
+    log(printf("pthread_self: %llX\n", pthread_self()));
 
     // printf("env1: %s\n", getenv("env1"));
     // sleep(10);
     // printf("env1: %s\n", getenv("env1"));
     
-    printf("Execute\n");
+    log(printf("Execute\n"));
     mine(&_context);
-    printf("Execute done\n");
+    log(printf("Execute done\n"));
   }
 
   void OnOK() override {
     // HandleScope scope(_env);
-    printf("pthread_self: %llX\n", pthread_self());          
+    log(printf("pthread_self: %llX\n", pthread_self()));
 
     auto result = Object::New(Env());
     result.Set("nonce", Number::New(Env(), _context.result.nonce));
     result.Set("deadline", Number::New(Env(), _context.result.deadline));
+    result.Set("best", Number::New(Env(), _context.result.best));
     
     Callback().MakeCallback(Receiver().Value(), std::initializer_list<napi_value>{
       Boolean::New(Env(), false), result
@@ -398,7 +401,7 @@ protected:
 };
 
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
-  printf("pthread_self: %llX\n", pthread_self());
+  log(printf("pthread_self: %llX\n", pthread_self()));
 
   exports["run"] = Function::New(env, MineWorker::run);
   return exports;

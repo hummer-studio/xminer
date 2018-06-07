@@ -2,7 +2,7 @@
 #define memcpy_s(x1, x2, x3, x4) memcpy(x1, x3, x4)
 #endif
 
-#define ENV_MINE_STATUS "mineStatus"
+#define ENV_CURRENT_HEIGHT "currentHeight"
 
 #define HASH_SIZE             32
 #define HASHES_PER_SCOOP      2
@@ -10,8 +10,15 @@
 #define SCOOPS_PER_PLOT       4096 // original 1MB/plot = 16384
 #define PLOT_SIZE             (SCOOPS_PER_PLOT * SCOOP_SIZE)
 
-#define MAX_CACHE_SCOOP_SIZE       (1024 * 1024 * 512 / SCOOP_SIZE)
+#define MAX_CACHE_SCOOP_SIZE  (1024 * 1024 * 512 / SCOOP_SIZE)
 #define POC2_START_BLOCK      502000
+
+#define log(x)                if (_debug) {           \
+                                x;                    \
+                              }
+
+
+extern bool _debug;
 
 typedef struct {
   napi_deferred deferred;
@@ -37,10 +44,10 @@ typedef struct {
 } CALLBACK_CONTEXT;
 
 
-inline void procscoop_callback(CALLBACK_CONTEXT* pData, uint64_t wertung, uint64_t nonce){
-  printf("procscoop_callback: %s %llu %llu %llu %llu %llu\n", pData->name.c_str(), nonce, wertung, wertung / pData->baseTarget, pData->baseTarget, pData->targetDeadline);
+inline void procscoop_callback(CALLBACK_CONTEXT* pData, uint64_t wertung, uint64_t nonce){  
 
   if (wertung / pData->baseTarget <= pData->targetDeadline){    
+    log(printf("procscoop_callback: %s %llu %llu %llu %llu %llu\n", pData->name.c_str(), nonce, wertung, wertung / pData->baseTarget, pData->baseTarget, pData->targetDeadline));
     
     if (wertung < pData->result.best || pData->result.best == 0){
       pData->result.best = wertung;
