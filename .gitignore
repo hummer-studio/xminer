@@ -1,4 +1,14 @@
+**/.DS_Store
+
 .vscode/
 build/
 
 node_modules/
+
+**/bundle.js
+
+public/exports/**
+public/styles/**
+public/javascripts/**
+
+views/layout/**
