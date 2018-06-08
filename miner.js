@@ -50,7 +50,7 @@ async function test(){
 }
 
 async function worker(files){
-  //await test()
+  // return await test()
   
   const r = await aigle.promisify(async.retry)({
     times: 10,
@@ -217,7 +217,7 @@ async function socketIO(){
 }
 
 require("./config")(async function () {
-  // return socketIO()
+  return socketIO()
 
   const r = await aigle.resolve(dirRecursive("/Volumes/plots")).then((n) => {
     return _.flatten(n)
