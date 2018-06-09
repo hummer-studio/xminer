@@ -2,19 +2,34 @@
 </style>
 
 <template>
-  <Layout>
-    <Content style="margin: 20px 10px">
-      <Row>
+  <Content class="layout-content">
+    <Row :gutter=10>
+      <Col span="3">
         <Card>
-          <p slot="title">Mine stats</p>
-          <!-- <a href="#" slot="extra" @click.prevent="changeLimit">
-            <Icon type="ios-loop-strong"></Icon>
-            Change
-          </a>           -->
+          <p slot="title">Best Deadline</p>
+          <p>3m 11:12:32</p>
         </Card>
-      </Row>  
-    </Content>    
-  </Layout>  
+      </Col>
+      <Col span="3">
+        <Card>
+          <p slot="title">Height</p>
+          <p>3m 11:12:32</p>
+        </Card>
+      </Col>
+      <Col span="3">
+        <Card>
+          <p slot="title">deadline</p>
+          <p>3m 11:12:32</p>
+        </Card>
+      </Col>
+      <Col span="3">
+        <Card>
+          <p slot="title">deadline</p>
+          <p>3m 11:12:32</p>
+        </Card>
+      </Col>
+    </Row>   
+  </Content>  
 </template>
 
 <script>

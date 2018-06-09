@@ -1,0 +1,1 @@
+export const SET_POOL_INFO            = "SET_POOL_INFO"

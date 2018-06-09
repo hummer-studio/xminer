@@ -7,7 +7,7 @@ class Client{
 
   static boardcast(v){
     _.each(this.clients, (n) => {
-      n.send(v)
+      n.send(JSON.stringify(v))
     })
   }
 

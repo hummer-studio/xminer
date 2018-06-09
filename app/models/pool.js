@@ -20,25 +20,37 @@ class Pool{
     const client = new WebSocketClient();
 
     client.on('connectFailed', (error) => {
-      logger.error(error.toString())
+      logger.error(`connectFailed: ${error.toString()}`)
       setTimeout(() => Pool.initialize, 1000 * 5)        
     });
   
     client.on('connect', (connection) => {
 
-      // connection.on('error', function(error) {
-      //   logger.error("Connection Error: " + error.toString());
-      // })
+      connection.on('error', function(error) {
+        logger.error("Connection Error: " + error.toString());
+      })
 
       //auto reconnect
       connection.on('close', () => {
+        logger.error(`closed`)
         setTimeout(() => Pool.initialize, 1000 * 5)        
       })
 
       connection.on('message', function(message) {
         //message.type === 'utf8'
 
-        Client.boardcast(message.utf8Data)
+        const data = JSON.parse(message.utf8Data)
+        if (data.generationSignature){
+          Client.boardcast({
+            command: 'poolInfo',
+            data,
+          })
+        }else if (data.address){
+          Client.boardcast({
+            command: 'poolSubscribe',
+            data,
+          })
+        }            
       })      
 
       this.instance = new Pool(connection)

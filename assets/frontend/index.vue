@@ -1,15 +1,12 @@
-<style lang="scss">
-
-</style>
-
 <script>
 import "../styles/global.scss"
 
 import Vue from "vue"
+import store from './store'
 import VueRouter from "vue-router"
-import iView from 'iview';
-import 'iview/dist/styles/iview.css';
-// // import Vuex from "vue-resource"
+import iView from 'iview'
+import 'iview/dist/styles/iview.css'
+import miment from "miment"
 
 Vue.use(VueRouter)
 Vue.use(iView)
@@ -32,5 +29,6 @@ new Vue({
   template: "<div><router-view></router-view></div>",
 
   router,
+  store,
 })
 </script>

@@ -1,51 +1,52 @@
 <style lang="scss" scoped>
-
 </style>
 
 <template>
-  <Layout>
-    <Content class="l">
-      <Row>
+  <Content class="layout-content">
+    <Row :gutter=10>
+      <Col span="3">
         <Card>
-          <p slot="title">Mine stats</p>
-          <!-- <a href="#" slot="extra" @click.prevent="changeLimit">
-            <Icon type="ios-loop-strong"></Icon>
-            Change
-          </a>           -->
+          <p slot="title">Height</p>
+          <p>{{ height }}</p>
         </Card>
-      </Row>  
-    </Content>    
-  </Layout>  
+      </Col>
+      <Col span="3">
+        <Card>
+          <p slot="title">Best Deadline</p>
+          <p>{{ deadline }}</p>
+        </Card>
+      </Col>
+      <Col span="6">
+        <Card>
+          <p slot="title">Best Miner</p>
+          <p>{{ miner }}</p>
+        </Card>
+      </Col>      
+    </Row>   
+  </Content>  
 </template>
 
 <script>
-export default {  
+import { mapGetters, mapActions } from 'vuex'
+
+export default {    
   data () {      
     return  {}
   },
-  methods: {      
-    connectWS(){
-      // this.ws = new WebSocket("wss://0-100-pool.burst.cryptoguru.org/ws");
-      this.ws = new WebSocket(`ws://${window.location.host}/ws`);
-      this.ws.onmessage = (env) => {
-        console.log(env.data)
-      }
 
-      // this.ws.onerror = (err) => {
-      //   debugger
-      // }
-
-      // this.ws.onopen = (w) => {
-      //   // this.ws.send(JSON.stringify({fuck: 1}))
-      // }
-
-      this.ws.onclose = () => {
-        setTimeout(this.connectWS, 1000 * 5)        
-      }
-    }
+  computed: {
+    ...mapGetters({
+      height: "height",
+      deadline: "deadline",
+      miner: "miner",
+    })
   },
+
+  methods: {      
+    
+  },
+
   mounted () {    
-    this.connectWS()
   }
 }
 </script>
