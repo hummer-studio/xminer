@@ -1,32 +1,14 @@
 #ifdef _WIN32
 #endif
 
-#include <napi.h>
-
-#include <string.h>
-// #include <sstream>
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
-#include <sys/mman.h>
-#include <algorithm>
-
-#include <uv.h>
-#include <utility>
-#include <unistd.h>
-
-#include "sph_shabal.h"
-#include "mshabal.h"
-#include "mshabal256.h"
-#include "shabal_asm.h"
 #include "miner.h"
+
 
 bool _debug = false;
 
 namespace Mine {
 
-void mine(CALLBACK_CONTEXT* pData){  
-
+void mine(CALLBACK_CONTEXT* pData){    
   char signature[33] = {};
   xstr2strr(signature, sizeof(signature), pData->generationSignature.c_str());  
 
@@ -47,8 +29,6 @@ void mine(CALLBACK_CONTEXT* pData){
   log(printf("filename: %s poc2: %X\n", pData->name.c_str(), pData->isPoc2));
   log(printf("generationSignature: %s, height: %llu\n", pData->generationSignature.c_str(), pData->height));
   log(printf("%llu_%llu_%llu_%llu\n", accountId, nonceStart, nonceSize, staggerSize));
-
-  // __asm__("int3");
 
   char scoopgen[40];  
   memmove(scoopgen, signature, sizeof(signature) - 1);
@@ -114,6 +94,8 @@ void mine(CALLBACK_CONTEXT* pData){
       // f.seekg(start + i * 64);
       // printf("seekg: %08X\n", f.fail());
 
+      CTickTime tt;
+
       
       size_t cb = read(f, pBuffer, bufferSize * SCOOP_SIZE);
       if (cb != bufferSize * SCOOP_SIZE){
@@ -133,8 +115,13 @@ void mine(CALLBACK_CONTEXT* pData){
           memcpy(&pBuffer[t + HASH_SIZE], &pBuffer2[t + HASH_SIZE], HASH_SIZE); //copy second hash to correct place.
         }
       }
+
+      pData->result.readedSize += cb;
+      pData->result.readElapsed += tt.tick();
       
       // printf("%08X, currentPos: %llx\n", *(uint32_t*)pBuffer, (uint64_t)f.tellg());
+
+      tt.reInitialize();
 
       #ifdef __AVX2__        
         procscoop_m256_8(signature, n + nonceStart + i, bufferSize, pBuffer, pData);// Process block AVX2
@@ -145,6 +132,8 @@ void mine(CALLBACK_CONTEXT* pData){
           procscoop_sph(signature, n + nonceStart + i, bufferSize, pBuffer, pData);// Process block SSE4
         #endif
       #endif
+
+      pData->result.calcElapsed += tt.tick();
 
       // if (pBuffer){
       //   munmap(pBuffer, bufferSize);
@@ -333,9 +322,7 @@ public:
     auto params = info[0].As<Object>();    
 
     CALLBACK_CONTEXT ctx;
-    ctx.result.nonce = 0;
-    ctx.result.deadline = 0;
-    ctx.result.best = 0;
+    memset(&ctx, 0, sizeof(CALLBACK_CONTEXT));    
 
     ctx.generationSignature = params.Get("generationSignature").As<String>().Utf8Value();    
     ctx.baseTarget = params.Get("baseTarget").As<Number>().Int64Value();
@@ -384,6 +371,9 @@ protected:
     result.Set("nonce", Number::New(Env(), _context.result.nonce));
     result.Set("deadline", Number::New(Env(), _context.result.deadline));
     result.Set("best", Number::New(Env(), _context.result.best));
+    result.Set("readedSize", Number::New(Env(), _context.result.readedSize));
+    result.Set("readElapsed", Number::New(Env(), _context.result.readElapsed));
+    result.Set("calcElapsed", Number::New(Env(), _context.result.calcElapsed));
     
     Callback().MakeCallback(Receiver().Value(), std::initializer_list<napi_value>{
       Boolean::New(Env(), false), result

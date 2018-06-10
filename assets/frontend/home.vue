@@ -1,23 +1,18 @@
 <style lang="scss" scoped>
-.layout{
-  border: 1px solid #d7dde4;
-  background: #f5f7f9;
-  position: relative;
-  border-radius: 4px;
-  overflow: hidden;
-}
+
 .layout-logo{
   color: #fff;
   float: left;
-  font-size: 16px;
+  font-size: 26px;
   font-weight: bold;
   position: relative;  
 }
+
 .layout-nav{
-  width: 420px;
-  margin: 0 auto;
-  margin-right: 20px;
+  float: right;
+  margin-top: 8px;
 }
+
 .layout-footer-center{
   text-align: center;
 }
@@ -27,9 +22,10 @@
   <Layout>
     <Header style="position: 'fixed'; width: 100%">
       <Menu mode="horizontal" theme="dark" active-name="1">
-        <div class="layout-logo">hmMiner</div>
-        <!--
+        <div class="layout-logo">xMiner</div>
+        
         <div class="layout-nav">
+          <!--
           <MenuItem name="1">
             <Icon type="ios-navigate"></Icon>
             Item 1
@@ -46,27 +42,32 @@
               <Icon type="ios-paper"></Icon>
               Item 4
           </MenuItem>
+-->
+          <a class="github-button" href="https://github.com/hummer-studio/xminer" data-icon="octicon-star" data-show-count="true" aria-label="Star hummer-studio/xminer on GitHub">Star</a>
         </div>
-        -->
+        
       </Menu>
     </Header>
 
-    <MineStats />
-    <PoolStats :height="123" />
+    <BaseStats />
+    <BlockStats />
+    <PoolStats />
 
     <Footer class="layout-footer-center"></Footer>
   </Layout>
 </template>
 
 <script>
-import MineStats from "./mineStats"
+import BaseStats from "./baseStats"
+import BlockStats from "./blockStats"
 import PoolStats from "./poolStats"
 import { deadline2Human } from "./utility"
 import { mapGetters, mapActions } from 'vuex'
 
 export default {
   components: {
-    MineStats: MineStats,
+    BaseStats: BaseStats,
+    BlockStats: BlockStats,
     PoolStats: PoolStats
   },
 
@@ -80,7 +81,7 @@ export default {
   },
 
   methods: {
-    ...mapActions(['connectWS']),
+    ...mapActions('Pool', ['connectWS']),
 
     // haha(message){
     //   if (message.command == "poolSubscribe"){

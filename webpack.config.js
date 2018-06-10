@@ -144,6 +144,7 @@ if (isProduction){
 
 
 const assets = [  
+  '//buttons.github.io/buttons.js'
 ]
 
 config.plugins = config.plugins.concat([
@@ -168,6 +169,14 @@ config.plugins = config.plugins.concat([
 
       return n.replace(/\.min\./, ".")
     }).value())
+  }),
+  new ScriptExtHtmlWebpackPlugin({
+    custom: [
+      {
+        test: /buttons.js/,
+        attribute: ['defer async']
+      },
+    ]
   }),
   new HtmlReplaceWebpackPlugin([
     {

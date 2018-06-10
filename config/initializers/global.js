@@ -1,7 +1,5 @@
 'use strict'
 
-require("../../common")
-
 global._ = require('lodash')
 
 global.async = require('neo-async')

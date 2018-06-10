@@ -7,7 +7,7 @@ node_modules/
 
 **/bundle.js
 
-public/exports/**
+public/images/**
 public/styles/**
 public/javascripts/**
 

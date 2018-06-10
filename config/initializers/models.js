@@ -6,11 +6,17 @@ function getModelName(name){
   }).join("")
 }
 
-require('require-dir-all')(`../../app/models`, {
-  map: (n) => {                
-    global[getModelName(n.name)] = n.exports
-    global[getModelName(n.name)].initialize()
-  }
-})
+;(async () => {
+  const initFunc = []
 
-global.initialized = true
+  require('require-dir-all')(`../../app/models`, {
+    map: async (n) => {                
+      global[getModelName(n.name)] = n.exports
+
+      initFunc.push(global[getModelName(n.name)].initialize())      
+    }
+  })
+  
+  await aigle.all(initFunc)
+  global.initialized = true
+})()

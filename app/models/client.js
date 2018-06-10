@@ -7,6 +7,7 @@ class Client{
 
   static boardcast(v){
     _.each(this.clients, (n) => {
+      logger.info(`boardcast: ${JSON.stringify(v)}`)
       n.send(JSON.stringify(v))
     })
   }
@@ -18,6 +19,28 @@ class Client{
     })
 
     this.clients.push(ws)
+
+    const freshBlock = Block.getFresh()    
+    if (freshBlock){      
+      ws.send(JSON.stringify({
+        command: 'block',
+        data: freshBlock
+      }))      
+    }
+
+    if (Pool.lastBlock){
+      ws.send(JSON.stringify({
+        command: 'poolInfo',
+        data: Pool.lastBlock,
+      }))
+    }    
+
+    ws.send(JSON.stringify({
+      command: 'baseInfo',
+      data: {
+        mined: Block.getAll().length,
+      },
+    }))
   }
 
   static remove(ws){
@@ -28,7 +51,7 @@ class Client{
     return this.clients.length
   }
 
-  static initialize(){
+  static async initialize(){
     this.clients = []
   }
 }

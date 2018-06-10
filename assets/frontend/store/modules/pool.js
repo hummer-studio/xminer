@@ -3,53 +3,69 @@ import * as types from '../types'
 import { deadline2Human } from  "../../utility"
 
 const state = {
-  height: "-",
-  miner: "-",
-  deadline: "-",
+  height: 0,
+  miner: 0,
+  deadline: 0,
+  accountId: null,
 }
 
 const getters = {
-  height: (state) => state.height,
-  deadline: (state) => state.deadline == "-" ? state.deadline : deadline2Human(state.deadline),
+  height: (state) => state.height || "-",
+  deadline: (state) => state.deadline ? deadline2Human(state.deadline) : state.deadline || "-",
 
-  miner: (state) => state.miner
+  miner: (state) => state.miner || "-",
+  accountId: (state) => state.accountId,
 }
 
 const actions = {
-  async connectWS({commit, dispatch}){
-    
-    // this.ws = new WebSocket("wss://0-100-pool.burst.cryptoguru.org/ws");
+  async connectWS({commit, dispatch}){    
     const ws = new WebSocket(`ws://${window.location.host}/ws`);
     ws.onmessage = (message) => {
       const d = JSON.parse(message.data)
 
-      if (d.command == "poolInfo"){
-        commit(types.SET_POOL_INFO, {
-          info: d.data
-        })
-      }
+      switch(d.command){
+        case "poolInfo":
+          commit(types.SET_POOL_INFO, {
+            data: d.data
+          })
+          break;
+        case "block":
+          commit(`Block/${types.SET_BLOCK_INFO}`, {data: d.data}, {root: true})
+          break
+        case "baseInfo":
+          commit(`Base/${types.SET_BASE_INFO}`, {data: d.data}, {root: true})
+          break
+      }      
     }
 
-    // this.ws.onerror = (err) => {
+    // ws.onerror = (err) => {
     //   debugger
     // }
 
+    // ws.onopen = (env) => {
+    // }
+
     ws.onclose = () => {      
+
       setTimeout(dispatch.bind(null, "connectWS"), 1000 * 5)
     }
   },
 }
 
 const mutations = {
-  [types.SET_POOL_INFO] (state, { info }){
-    console.log(info)
-    state.height = info.height    
-    state.miner = info.miner
-    state.deadline = info.deadline || "-"
-  } 
+  [types.SET_POOL_INFO] (state, { data }){
+    console.log(data)
+
+    state.height = data.height    
+    state.miner = data.miner
+    state.deadline = data.deadline
+    state.accountId = data.minerID
+  },
 }
 
 export default {
+  namespaced: true,
+
   state,
   getters,
   actions,

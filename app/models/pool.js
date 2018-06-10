@@ -16,31 +16,39 @@ class Pool{
     return this.instance
   }
 
-  static initialize(){    
+  static async initialize(){
+    this.lastBlock;
+
+    ///////////////////////////////////////////
     const client = new WebSocketClient();
 
     client.on('connectFailed', (error) => {
       logger.error(`connectFailed: ${error.toString()}`)
-      setTimeout(() => Pool.initialize, 1000 * 5)        
+
+      clearInterval(this.timer)
+      setTimeout(Pool.initialize, 1000 * 5)        
     });
   
     client.on('connect', (connection) => {
+      logger.info(`ws connected`);
 
-      connection.on('error', function(error) {
-        logger.error("Connection Error: " + error.toString());
-      })
+      // connection.on('error', function(error) {
+      //   logger.error("Connection Error: " + error.toString());
+      // })
 
       //auto reconnect
       connection.on('close', () => {
         logger.error(`closed`)
-        setTimeout(() => Pool.initialize, 1000 * 5)        
+
+        clearInterval(this.timer)
+        setTimeout(Pool.initialize, 1000 * 5)        
       })
 
       connection.on('message', function(message) {
-        //message.type === 'utf8'
-
         const data = JSON.parse(message.utf8Data)
         if (data.generationSignature){
+          Pool.lastBlock = data
+          
           Client.boardcast({
             command: 'poolInfo',
             data,
@@ -55,11 +63,16 @@ class Pool{
 
       this.instance = new Pool(connection)
       this.instance.subscribe("DGUV-F35Y-PPWM-2GX4D")
+
+      this.timer = setInterval(() => {        
+        logger.info("ws ping")
+        connection.ping()
+      }, 1000 * 10)
     });
 
     const u = url.parse(SETTINGS.pool_address)
 
-    client.connect(`${u.protocol == "https:" ? "wss" : "ws"}://${u.host}/ws`);    
+    client.connect(`${u.protocol == "https:" ? "wss" : "ws"}://${u.host}/ws`);
   }
 }
 

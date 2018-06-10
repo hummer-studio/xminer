@@ -1,13 +1,11 @@
 'use strict'
 
 const dirRecursive = require("recursive-readdir"),
-            //  aigle = require("aigle"),
-            //      _ = require('lodash'),
-            //  async = require("neo-async"),
               path = require("path"),
                 fs = require("fs"),
            request = require("request-promise"),
-             addon = require("./build/Release/miner");
+         { retry } = require("./utilities"),
+             addon = require("./build/Release/miner");         
 
 
 const HTTP_TIMEOUT = 1000 * 15             
@@ -15,6 +13,7 @@ const REFRESH_MINE_INFO_TIME = 1000 * 15
 const MAX_RETRY_TIMES = 10
 const ENV_CURRENT_HEIGHT = "currentHeight"
 const BASE_DIFFICULTY = 4398046511104
+const BACKEND_URL = "http://localhost"
 let _currentHeight = 0
 
 async function test(){  
@@ -49,35 +48,74 @@ async function test(){
   // return 
 }
 
+class Pool{
+  constructor(){
+
+  }
+
+  getBlock(){
+    return retry(1, 0, () => {
+      return request.defaults({timeout: HTTP_TIMEOUT})({
+        url: `${SETTINGS.pool_address}/burst`,
+        qs: {
+          requestType: 'getMiningInfo'
+        },
+        json: true,
+      })
+    })
+  }
+
+  submit(nonce, accountId, height){
+    return retry(1000, 200, () => {
+      return request.defaults({timeout: HTTP_TIMEOUT})({
+        url: `${SETTINGS.pool_address}/burst`,
+        qs: {
+          requestType: 'submitNonce',
+          nonce: nonce,
+          accountId: accountId,
+          blockheight: height,            
+        },
+        json: true
+      })
+    })
+  }
+}
+
 async function worker(files){
-  // return await test()
-  
-  const r = await aigle.promisify(async.retry)({
-    times: 10,
-    interval: 1000,
-  }, (done) => {
-    request.defaults({timeout: HTTP_TIMEOUT})({
-      url: `${SETTINGS.pool_address}/burst`,
-      qs: {
-        requestType: 'getMiningInfo'
-      },
-      json: true,
-    }).then((n) => done(null, n)).catch(done)
-  })
+  // return await test()  
+
+  const r = await retry(1, 0, () => {
+                    return request.defaults({timeout: HTTP_TIMEOUT})({
+                      url: `${SETTINGS.pool_address}/burst`,
+                      qs: {
+                        requestType: 'getMiningInfo'
+                      },
+                      json: true,
+                    })
+                  })
 
   if (_currentHeight >= r.height){
     logger.info(`not found more height`)
     return
   }
-
-  logger.info(r)    
-
+  
+  logger.info(r)
   
   const difficulty = BASE_DIFFICULTY / 240 / r.baseTarget
-  const targetDeadline = SETTINGS.targetDeadline == 0 ? r.targetDeadline : _.min([r.targetDeadline, SETTINGS.targetDeadline])      
+  const targetDeadline = SETTINGS.deadline ? _.min([r.targetDeadline, SETTINGS.deadline]) : r.targetDeadline
   const maxReader = SETTINGS.max_reader == 0 ? _.min([SETTINGS.plots.length, 3]) : SETTINGS.max_reader  
   let best = targetDeadline * r.baseTarget
   _currentHeight = r.height
+
+  request({
+    method: "post",
+    url: `${BACKEND_URL}:${SETTINGS.port}/api/collect/block`,
+    json: _.merge({}, r, {
+      targetDeadline: targetDeadline,
+      difficulty: difficulty,
+      maxReader: maxReader
+    }),
+  }).then(_.noop()).catch(_.noop())
 
   process.env[ENV_CURRENT_HEIGHT] = r.height
   const f = aigle.promisify(async.eachLimit)(files, maxReader, (n, next) => {
@@ -104,6 +142,15 @@ async function worker(files){
         next(err)          
         return
       }
+
+      request({
+        method: "post",
+        url: `${BACKEND_URL}:${SETTINGS.port}/api/collect/block/mined`,
+        json: _.merge({}, rr, {
+          fileName: n.fileName,
+          height: r.height,
+        }),
+      })
 
       if (r.height < _currentHeight){
         next()
@@ -134,8 +181,8 @@ async function worker(files){
 
           done()
           return
-        }
-
+        }        
+        
         request.defaults({timeout: HTTP_TIMEOUT})({
           url: `${SETTINGS.pool_address}/burst`,
           qs: {
@@ -161,84 +208,8 @@ async function worker(files){
   logger.info(`mine done`)
 }
 
-async function socketIO(){
-  // const s = require("socket.io-client")("wss://0-100-pool.burst.cryptoguru.org",  {path: "/ws"})  
-
-  
-  // s.on('connect', function(){
-  //   log('connect')
-  // });
-  // s.on('event', function(data){
-  //   log(data)
-  // });
-
-  // s.on('disconnect', function(){
-  //   log("dis")
-  // });
-
-  // s.on("connect_error", function(err){
-  //   log(err);
-  // })
-
-  var WebSocketClient = require('websocket').client;
-
-  var client = new WebSocketClient();
-
-  client.on('connectFailed', function(error) {
-      console.log('Connect Error: ' + error.toString());
-  });
-
-  client.on('connect', function(connection) {
-      console.log('WebSocket Client Connected');
-      connection.on('error', function(error) {
-          console.log("Connection Error: " + error.toString());
-      });
-      connection.on('close', function() {
-          console.log('echo-protocol Connection Closed');
-      });
-      connection.on('message', function(message) {
-          if (message.type === 'utf8') {
-              console.log("Received: '" + message.utf8Data + "'");
-          }
-      });
-      
-      // function sendNumber() {
-      //     if (connection.connected) {
-      //         var number = Math.round(Math.random() * 0xFFFFFF);
-      //         connection.sendUTF(number.toString());
-      //         setTimeout(sendNumber, 1000);
-      //     }
-      // }
-      // sendNumber();
-  });
-
-  // client.connect('wss://0-100-pool.burst.cryptoguru.org/ws', 'echo-protocol');
-  client.connect('wss://0-100-pool.burst.cryptoguru.org/ws');
-}
-
 require("./config")(async function () {
-  return socketIO()
-
-  const r = await aigle.resolve(dirRecursive("/Volumes/plots")).then((n) => {
-    return _.flatten(n)
-  }).map((fullPath) => {
-
-    const fileName = path.parse(fullPath).name
-    const [accountId, nonceStart, nonceSize, staggerSize] = fileName.split("_")
-
-    if (accountId == null || nonceStart == null || nonceSize == null){
-      return
-    }
-
-    return {
-      fullPath,
-      fileName,
-      fileSize: fs.statSync(fullPath).size,
-      isPoc2: staggerSize == null,
-    }    
-  }).then(_.compact).sortBy((n) => -n.fileSize).then((n) => {
-    return _.uniqBy(n, m => m.fullPath)
-  }).then((n) => {
+  const r = await aigle.resolve(Plots.getAll()).sortBy((n) => -n.fileSize).then((n) => {
     // return _.filter(n, m => /_389096_/.test(m.fileName))
     return n
     // return _.filter(n, m => /_800000000_/.test(m.fileName))
@@ -247,6 +218,10 @@ require("./config")(async function () {
     // return [_.find(n, m => /_4096$/.test(m.fileName))]
     // return _.filter(n, m => m.isPoc2)
   })
+
+  // logger.warn(Plots.getAccountId());
+  // logger.warn(r)
+  return
 
   setInterval(() => worker(r),  REFRESH_MINE_INFO_TIME)
 })

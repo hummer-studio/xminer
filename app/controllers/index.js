@@ -3,6 +3,9 @@
 const router = require('koa-router')()
 
 router.get(/^\//, function* (){  
+
+  logger.info(`client length: ${Client.length()}`)
+
   yield this.render("vue", {
     layout: './layout/vue',    
   })

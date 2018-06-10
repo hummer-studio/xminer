@@ -1,3 +1,26 @@
+#ifndef X_MINER_H
+#define X_MINER_H
+
+#include <napi.h>
+
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <sys/mman.h>
+#include <sys/time.h>
+#include <algorithm>
+
+#include <uv.h>
+#include <utility>
+#include <unistd.h>
+
+#include "sph_shabal.h"
+#include "mshabal.h"
+#include "mshabal256.h"
+#include "shabal_asm.h"
+
+
 #ifndef memcpy_s
 #define memcpy_s(x1, x2, x3, x4) memcpy(x1, x3, x4)
 #endif
@@ -39,10 +62,36 @@ typedef struct {
     uint64_t nonce;
     uint64_t deadline;
     uint64_t best;
+
+    size_t readedSize;
+    time_t readElapsed;
+    time_t calcElapsed;
   } result;
   napi_async_work mainWorker;
 } CALLBACK_CONTEXT;
 
+
+class CTickTime{
+private:
+  timeval _tt;
+
+public:
+  CTickTime(){
+    gettimeofday(&_tt, NULL);
+  }
+
+public:
+  void reInitialize(){
+    gettimeofday(&_tt, NULL);
+  }
+
+  time_t tick(){
+    timeval t;
+    gettimeofday(&t, NULL);
+
+    return (t.tv_sec - _tt.tv_sec) * 1000 + (t.tv_usec - _tt.tv_usec) / 1000;
+  }
+};
 
 inline void procscoop_callback(CALLBACK_CONTEXT* pData, uint64_t wertung, uint64_t nonce){  
 
@@ -346,3 +395,5 @@ inline size_t xstr2strr(char *buf, size_t const bufsize, const char *const in) {
   buf[inlen / 2] = '\0';
   return inlen / 2 + 1;
 }
+
+#endif
