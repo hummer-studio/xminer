@@ -2,6 +2,8 @@
 
 const WebSocketClient = require('websocket').client,
                   url = require("url")
+
+require("./plots")                  
                   
 class Pool{
   constructor(ws){
@@ -58,14 +60,13 @@ class Pool{
             command: 'poolSubscribe',
             data,
           })
-        }            
+        }      
       })      
 
-      this.instance = new Pool(connection)
-      this.instance.subscribe("DGUV-F35Y-PPWM-2GX4D")
+      this.instance = new Pool(connection)      
+      this.instance.subscribe(Plots.getAccountId())
 
-      this.timer = setInterval(() => {        
-        logger.info("ws ping")
+      this.timer = setInterval(() => {
         connection.ping()
       }, 1000 * 10)
     });

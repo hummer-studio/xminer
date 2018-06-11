@@ -5,8 +5,10 @@
 
 </style>
 
-<template>
+<template>  
   <Content class="layout-content">
+    <h2>Pool Stats</h2>
+    
     <Row :gutter=10>
       <Col span="3">
         <Card class="x-card">
@@ -24,7 +26,7 @@
         <Card class="x-card">
           <p slot="title">Best Miner</p>
           <div v-if="accountId">
-            <a :href="minerLink" target="_blank">{{ miner }}</a>          
+            <a :href="`https://explore.burst.cryptoguru.org/address/${this.accountId}`" target="_blank">{{ miner }}</a>          
           </div>
           <div v-else>
             <p>{{ miner }}</p>
@@ -49,11 +51,7 @@ export default {
       deadline: "deadline",
       miner: "miner",
       accountId: "accountId",
-    }), 
-
-    minerLink: function (){
-      return `https://explore.burst.cryptoguru.org/address/${this.accountId}`
-    }
+    }),
   },
 
   methods: {      

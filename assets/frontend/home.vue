@@ -61,7 +61,6 @@
 import BaseStats from "./baseStats"
 import BlockStats from "./blockStats"
 import PoolStats from "./poolStats"
-import { deadline2Human } from "./utility"
 import { mapGetters, mapActions } from 'vuex'
 
 export default {

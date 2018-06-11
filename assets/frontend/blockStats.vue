@@ -3,6 +3,8 @@
 
 <template>
   <Content class="layout-content">
+    <h2>Current Block Mine Stats</h2>
+
     <Row :gutter=10>
       <Col span="3">
         <Card class='x-card'>

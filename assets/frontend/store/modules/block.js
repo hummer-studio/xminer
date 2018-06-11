@@ -2,7 +2,7 @@
 
 import Vue from 'vue'
 import * as types from '../types'
-import { deadline2Human } from  "../../utility"
+import { humanDeadline } from "../../../../utilities"
 
 const state = {
   height: 0,
@@ -14,7 +14,7 @@ const state = {
 const getters = {  
   height: (state) => state.height || "-",
   baseTarget: (state) => state.baseTarget || "-",
-  targetDeadline: (state) => state.targetDeadline ? deadline2Human(state.targetDeadline) : "-",
+  targetDeadline: (state) => state.targetDeadline ? humanDeadline(state.targetDeadline) : "-",
   difficulty: (state) => state.difficulty ? parseInt(state.difficulty) : "-"
 }
 

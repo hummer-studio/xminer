@@ -1,6 +1,6 @@
 import Vue from 'vue'
 import * as types from '../types'
-import { deadline2Human } from  "../../utility"
+import { humanDeadline } from "../../../../utilities"
 
 const state = {
   height: 0,
@@ -11,7 +11,7 @@ const state = {
 
 const getters = {
   height: (state) => state.height || "-",
-  deadline: (state) => state.deadline ? deadline2Human(state.deadline) : state.deadline || "-",
+  deadline: (state) => state.deadline ? humanDeadline(state.deadline) : state.deadline || "-",
 
   miner: (state) => state.miner || "-",
   accountId: (state) => state.accountId,

@@ -16,44 +16,8 @@ const BASE_DIFFICULTY = 4398046511104
 const BACKEND_URL = "http://localhost"
 let _currentHeight = 0
 
-async function test(){  
-  // process.env['env1'] = "nima"
-  // setTimeout(() => {
-  //   process.env['env1'] = "nima2"
-  // }, 1000 * 5);
-
-  // setTimeout(() => {
-  //    console.log(process.env['env1'])
-  // }, 1000 * 12);
-
-  // addon.run({fuck: "haha"}, function(n1, n2){
-  //   console.log(`it's me. ${n1}, ${n2}`);
-  // })
-
-  // return
-
-  // addon.run({
-  //   generationSignature: "ksdjhflksdjfklsjdklfjksldflksdjf",
-  //   baseTarget: 1232443,
-  //   height: 12345,
-  //   targetDeadline: 9843758945,
-
-  //   fullPath: _.first(files).fullPath,
-  //   fileName: _.first(files).fileName,
-  //   isPoc2: _.first(files).isPoc2,
-  // }, function(){
-  //   console.log("fuck out all")
-  // })      
-
-  // return 
-}
-
 class Pool{
-  constructor(){
-
-  }
-
-  getBlock(){
+  static getBlock(){
     return retry(1, 0, () => {
       return request.defaults({timeout: HTTP_TIMEOUT})({
         url: `${SETTINGS.pool_address}/burst`,
@@ -61,41 +25,68 @@ class Pool{
           requestType: 'getMiningInfo'
         },
         json: true,
+      }).then((r) => {
+        if (!r.height){
+          logger.wanr('get mine info failed.')
+          throw r
+        }
+
+        return r
       })
     })
   }
 
-  submit(nonce, accountId, height){
-    return retry(1000, 200, () => {
+  static submit(nonce, height, confirmCallback){
+    return retry(MAX_RETRY_TIMES, 200, () => {
+      if (!confirmCallback()){
+        return
+      }
+
       return request.defaults({timeout: HTTP_TIMEOUT})({
         url: `${SETTINGS.pool_address}/burst`,
         qs: {
           requestType: 'submitNonce',
           nonce: nonce,
-          accountId: accountId,
+          accountId: Plots.getAccountId(),
           blockheight: height,            
         },
         json: true
+      }).then((r) => {
+        if (r.result != "success"){
+          logger.warn(`submit nonce failed.`)
+          throw r
+        }
+
+        logger.info(`pool confirmed the nonce. ${height} ${nonce}`)
+        return r
       })
     })
   }
 }
 
+class Communication{
+  static submitBlock(params){
+    return request({
+      method: "post",
+      url: `${BACKEND_URL}:${SETTINGS.port}/api/collect/block`,
+      json: params,
+    }).then(_.noop()).catch(_.noop())
+  }
+
+  static submitNonce(params){
+    return request({
+      method: "post",
+      url: `${BACKEND_URL}:${SETTINGS.port}/api/collect/block/mined`,
+      json: params,
+    })    
+  }
+}
+
 async function worker(files){
-  // return await test()  
+  const r = await Pool.getBlock()
 
-  const r = await retry(1, 0, () => {
-                    return request.defaults({timeout: HTTP_TIMEOUT})({
-                      url: `${SETTINGS.pool_address}/burst`,
-                      qs: {
-                        requestType: 'getMiningInfo'
-                      },
-                      json: true,
-                    })
-                  })
-
-  if (_currentHeight >= r.height){
-    logger.info(`not found more height`)
+  if (_currentHeight > r.height){
+    logger.info(`not found more height. ${_currentHeight} ${r.height}`)
     return
   }
   
@@ -107,25 +98,21 @@ async function worker(files){
   let best = targetDeadline * r.baseTarget
   _currentHeight = r.height
 
-  request({
-    method: "post",
-    url: `${BACKEND_URL}:${SETTINGS.port}/api/collect/block`,
-    json: _.merge({}, r, {
-      targetDeadline: targetDeadline,
-      difficulty: difficulty,
-      maxReader: maxReader
-    }),
-  }).then(_.noop()).catch(_.noop())
+  Communication.submitBlock(_.merge({}, r, {
+    targetDeadline: targetDeadline,
+    difficulty: difficulty,
+    maxReader: maxReader
+  }))
 
   process.env[ENV_CURRENT_HEIGHT] = r.height
   const f = aigle.promisify(async.eachLimit)(files, maxReader, (n, next) => {
     if (Number(process.env[ENV_CURRENT_HEIGHT]) != r.height){      
-      logger.info("sssssssssssssssssssssssssssssssskip the block");
+      logger.warn("found new block. skip this block.");
       next()
       return
     }
 
-    logger.info(n)
+    logger.info(`mine ${n.fileName}`)
 
     addon.run({
       generationSignature: r.generationSignature, 
@@ -143,63 +130,33 @@ async function worker(files){
         return
       }
 
-      request({
-        method: "post",
-        url: `${BACKEND_URL}:${SETTINGS.port}/api/collect/block/mined`,
-        json: _.merge({}, rr, {
-          fileName: n.fileName,
-          height: r.height,
-        }),
-      })
-
-      if (r.height < _currentHeight){
-        next()
-        return
-      }
-
-      if (rr.best >= best){
-        logger.info(`skip this record.`)
-        next()
-        return
-      }
+      Communication.submitNonce(_.merge({}, rr, {
+        fileName: n.fileName,
+        height: r.height,
+      }))
 
       if (rr.nonce == 0){
         next()
         return
       }
 
+      if (r.height < _currentHeight){
+        logger.warn(`the block is done. skip this nonce.`)
+        next()
+        return
+      }
+
       best = rr.best
 
-      logger.info(rr);        
-
-      aigle.promisify(async.retry)({
-        times: MAX_RETRY_TIMES,
-        interval: 1000,
-      }, (done) => {
+      logger.info(`found valid nonce: ${JSON.stringify(rr)}`)
+      Pool.submit(rr.nonce, r.height, () => {
         if (rr.best > best){
-          logger.info("skip this request")
+          logger.warn("has best nonce. skip this nonce.")
+          return false
+        }
 
-          done()
-          return
-        }        
-        
-        request.defaults({timeout: HTTP_TIMEOUT})({
-          url: `${SETTINGS.pool_address}/burst`,
-          qs: {
-            requestType: 'submitNonce',
-            nonce: rr.nonce,
-            accountId: _.first(n.fileName.split("_")),
-            blockheight: r.height,            
-          },
-          json: true
-        }).then((r1) => done(null, r1)).catch(done)
-      }).then((n) => {
-        logger.info(n)
-      }).catch(() => {
-        logger.error("error")
-      })
-              
-      next()
+        return true
+      }).then(() => next()).catch(next)                      
     })
   })
 
@@ -218,10 +175,6 @@ require("./config")(async function () {
     // return [_.find(n, m => /_4096$/.test(m.fileName))]
     // return _.filter(n, m => m.isPoc2)
   })
-
-  // logger.warn(Plots.getAccountId());
-  // logger.warn(r)
-  return
 
   setInterval(() => worker(r),  REFRESH_MINE_INFO_TIME)
 })

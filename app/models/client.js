@@ -1,14 +1,44 @@
 'use strict'
 
 class Client{
-  constructor(){
+  constructor(ws){
+    this.ws = ws
+  }
+  
+  sendBaseInfo(){
+    this.ws.send(JSON.stringify({
+      command: 'baseInfo',
+      data: {
+        mined: Block.getAll().length,
+        capacity: Plots.getSize(),
+        files: Plots.getAll(),
+      },
+    }))
+  }
 
+  sendPoolLastBlock(){
+    if (Pool.lastBlock){
+      this.ws.send(JSON.stringify({
+        command: 'poolInfo',
+        data: Pool.lastBlock,
+      }))
+    }        
+  }
+
+  sendFreshBlock(){
+    const freshBlock = Block.getFresh()    
+    if (freshBlock){      
+      this.ws.send(JSON.stringify({
+        command: 'block',
+        data: freshBlock
+      }))      
+    }
   }
 
   static boardcast(v){
     _.each(this.clients, (n) => {
       logger.info(`boardcast: ${JSON.stringify(v)}`)
-      n.send(JSON.stringify(v))
+      n.ws.send(JSON.stringify(v))
     })
   }
 
@@ -18,37 +48,21 @@ class Client{
       Client.remove(ws)
     })
 
-    this.clients.push(ws)
+    const client = new Client(ws)
 
-    const freshBlock = Block.getFresh()    
-    if (freshBlock){      
-      ws.send(JSON.stringify({
-        command: 'block',
-        data: freshBlock
-      }))      
-    }
+    client.sendFreshBlock()
+    client.sendPoolLastBlock()
+    client.sendBaseInfo()    
 
-    if (Pool.lastBlock){
-      ws.send(JSON.stringify({
-        command: 'poolInfo',
-        data: Pool.lastBlock,
-      }))
-    }    
-
-    ws.send(JSON.stringify({
-      command: 'baseInfo',
-      data: {
-        mined: Block.getAll().length,
-      },
-    }))
+    this.clients.push(client)
   }
 
   static remove(ws){
-    this.clients = _.filter(this.clients, (n) => n != ws)
+    this.clients = _.filter(this.clients, (n) => n.ws != ws)
   }
 
-  static length(){
-    return this.clients.length
+  static getAll(){
+    return this.clients
   }
 
   static async initialize(){
