@@ -9,17 +9,17 @@ class Plots{
 
   }
   
-  static saveStatsData(fileName, readedSize, readElapsed, calcElapsed){    
-    _.chain(Plots.getAll()).find((n) => n.fileName == fileName).thru((file) => {
+  static saveStatsData(params){    
+    _.chain(Plots.getAll()).find((n) => n.fileName == params.fileName).thru((file) => {
 
       file.readedSize = file.readedSize || 0
-      file.readedSize += readedSize
+      file.readedSize += params.readedSize
   
       file.calcElapsed = file.calcElapsed || 0
-      file.calcElapsed += calcElapsed
+      file.calcElapsed += params.calcElapsed
   
       file.readElapsed = file.readElapsed || 0
-      file.readElapsed += readElapsed
+      file.readElapsed += params.readElapsed
     }).value()
   }
 

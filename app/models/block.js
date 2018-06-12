@@ -4,27 +4,34 @@ class Block{
   constructor(){
   }
 
-  static saveStatsData(height, nonce, deadline, best){
-    _.chain(this.all).find((n) => n.height == height).thru((r) => {
+  static getBestNonce(){
+    return this.best
+  }
+
+  static getLast360RoundNonce(){
+  }
+
+  static saveStatsData(params){
+    _.chain(this.all).find((n) => n.height == params.height).thru((r) => {
       if (!r){
         return
+      }      
+
+      if (!this.best.best || this.best.best < params.best){
+        this.best = params
       }
 
       r.nonces = r.nonces || []
-      r.nonces.push({
-        nonce: 0,
-        deadline: 0,
-        best: 0,
-      })
+      r.nonces.push(_.omit(params, ["height"]))
     }).value()
   }
 
-  static findBestNonce(height){
-    return _.chain(this.all)
-            .find((n) => n.height == height)
-            .get("nonces")
-            .orderBy(["best"], ["desc"]).first().value()
-  }
+  // static findBestNonce(height){
+  //   return _.chain(this.all)
+  //           .find((n) => n.height == height)
+  //           .get("nonces")
+  //           .orderBy(["best"], ["desc"]).first().value()
+  // }
 
   static save(params){
     return _.chain(this.all)
@@ -49,6 +56,9 @@ class Block{
 
   static async initialize(){
     this.all = []
+
+    this.best = {}
+    this.last360RoundBest = {}
   }  
 }
 

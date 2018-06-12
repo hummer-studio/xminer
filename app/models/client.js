@@ -6,19 +6,19 @@ class Client{
   }
   
   sendBaseInfo(){
-    this.ws.send(JSON.stringify({
+    return this.ws.send(JSON.stringify({
       command: 'baseInfo',
       data: {
         mined: Block.getAll().length,
         capacity: Plots.getSize(),
-        files: Plots.getAll(),
+        files: Plots.getAll(),        
       },
     }))
   }
 
   sendPoolLastBlock(){
     if (Pool.lastBlock){
-      this.ws.send(JSON.stringify({
+      return this.ws.send(JSON.stringify({
         command: 'poolInfo',
         data: Pool.lastBlock,
       }))
@@ -28,18 +28,23 @@ class Client{
   sendFreshBlock(){
     const freshBlock = Block.getFresh()    
     if (freshBlock){      
-      this.ws.send(JSON.stringify({
+      return this.ws.send(JSON.stringify({
         command: 'block',
         data: freshBlock
       }))      
     }
   }
 
+  static boardcastBaseInfo(){
+    return aigle.map(this.clients, (n) => n.sendBaseInfo())
+  }
+
+  static boardcastBlock(){
+    return aigle.map(this.clients, (n) => n.sendFreshBlock())
+  }
+
   static boardcast(v){
-    _.each(this.clients, (n) => {
-      logger.info(`boardcast: ${JSON.stringify(v)}`)
-      n.ws.send(JSON.stringify(v))
-    })
+    return aigle.map(this.clients, (n) => n.ws.send(JSON.stringify(v)))    
   }
 
   static save(ws){

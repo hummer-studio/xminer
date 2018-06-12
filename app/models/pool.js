@@ -61,7 +61,7 @@ class Pool{
             data,
           })
         }      
-      })      
+      })
 
       this.instance = new Pool(connection)      
       this.instance.subscribe(Plots.getAccountId())

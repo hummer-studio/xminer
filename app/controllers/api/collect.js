@@ -2,32 +2,25 @@
 
 const router = require('koa-router')()
 
-router.post("/block", function* (){ 
+router.post("/block", function* (){   
 
-  const r = _.pick(this.params, [
+  if (Block.save(_.pick(this.params, [
     "baseTarget", 
     "generationSignature", 
     "height", 
     "targetDeadline",    
     "difficulty",
     "maxReader",
-  ])
-  
-  if (Block.save(r)){
-    Client.boardcast({
-      command: "block",
-      data: r
-    })
+    "scoop",
+  ]))){
+    Client.boardcastBlock()    
   }  
 
   this.body = {}
 })
 
 router.post("/block/mined", function* (){ 
-  logger.warn(this.params)
-
-  const { fileName, readedSize, readElapsed, calcElapsed} = this.params
-  const { height, nonce, deadline, best } = this.params
+  const { nonce } = this.params
 
   // { nonce: 0,
   //   deadline: 0,
@@ -38,14 +31,12 @@ router.post("/block/mined", function* (){
   //   fileName: '399604754858490715_5000000_1922592_1922592',
   //   height: 500170 }
 
-  Plots.saveStatsData(fileName, readedSize, readElapsed, calcElapsed)
-  if (nonce > 0){
-    Block.saveStatsData(height, nonce, deadline, best)
+  Plots.saveStatsData(_.pick(this.params, ["fileName", "readedSize", "readElapsed", "calcElapsed"]))
+  if (nonce > 0){  
+    Block.saveStatsData(_.pick(this.params, ["height", "nonce", "deadline", "best"]))
   }
 
-  aigle.resolve(Client.getAll()).map((n) => {
-    n.sendBaseInfo()
-  })  
+  Client.boardcastBaseInfo()  
   
   this.body = {}
 })

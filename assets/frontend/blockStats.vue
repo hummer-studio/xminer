@@ -14,6 +14,12 @@
       </Col>
       <Col span="3">
         <Card class='x-card'>
+          <p slot="title">Scoop</p>
+          <p>{{ scoop }}</p>
+        </Card>
+      </Col>          
+      <Col span="3">
+        <Card class='x-card'>
           <p slot="title">Base Target</p>
           <p>{{ baseTarget }}</p>
         </Card>
@@ -30,7 +36,13 @@
           <p slot="title">Difficulty</p>
           <p>{{ difficulty }}</p>
         </Card>
-      </Col>      
+      </Col>   
+
+      <Col span="3">
+        <i-circle :percent="80" :size="90" style="margin: 5px 10px">
+          <span class="demo-Circle-inner" style="font-size: 24px">80%</span>
+        </i-circle>
+      </Col>
     </Row>   
   </Content>  
 </template>
@@ -48,7 +60,8 @@ export default {
       height: "height",
       baseTarget: "baseTarget",
       targetDeadline: "targetDeadline",
-      difficulty: "difficulty"
+      difficulty: "difficulty",
+      scoop: "scoop",
     })
   },
 

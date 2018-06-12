@@ -7,14 +7,30 @@ const state = {
   miner: 0,
   deadline: 0,
   accountId: null,
+
+  address: null,
+  currentDeadline: 0,
+  effectiveCapacity: 0,
+  historicalShare: 0,
+  lastActiveBlockHeight: 0,
+  nConf: 0,
+  pending: 0,
 }
 
 const getters = {
   height: (state) => state.height || "-",
   deadline: (state) => state.deadline ? humanDeadline(state.deadline) : state.deadline || "-",
+  currentDeadline: (state) => state.currentDeadline ? humanDeadline(state.currentDeadline) : state.currentDeadline || "-",
 
   miner: (state) => state.miner || "-",
   accountId: (state) => state.accountId,
+
+  address: (state) => state.address,
+  effectiveCapacity: (state) => state.effectiveCapacity.toFixed(4),
+  historicalShare: (state) => (state.historicalShare * 100).toFixed(4),
+  lastActiveBlockHeight: (state) => state.lastActiveBlockHeight,
+  nConf: (state) => state.nConf,
+  pending: (state) => state.pending / 100000000,
 }
 
 const actions = {
@@ -34,6 +50,9 @@ const actions = {
           break
         case "baseInfo":
           commit(`Base/${types.SET_BASE_INFO}`, {data: d.data}, {root: true})
+          break
+        case "poolSubscribe":
+          commit(types.SET_ACCOUNT_INFO, {data: d.data})
           break
       }      
     }
@@ -56,11 +75,14 @@ const mutations = {
   [types.SET_POOL_INFO] (state, { data }){
     console.log(data)
 
-    state.height = data.height    
-    state.miner = data.miner
-    state.deadline = data.deadline
+    _.merge(state, _.omit(data, "minerId"))    
     state.accountId = data.minerID
   },
+
+  [types.SET_ACCOUNT_INFO] (state, { data }){
+    _.merge(state, _.omit(data, "deadline"))
+    state.currentDeadline = data.deadline
+  }
 }
 
 export default {

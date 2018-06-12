@@ -27,7 +27,7 @@
 
       <Col span="5">
         <Card class='x-card'>
-          <p slot="title">Best Deadline(360 rounds)</p>
+          <p slot="title">Best Deadline (360 rounds)</p>
           <p>{{ mined }}</p>
         </Card>
       </Col>  
