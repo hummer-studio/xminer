@@ -11,7 +11,9 @@ class Client{
       data: {
         mined: Block.getAll().length,
         capacity: Plots.getSize(),
-        files: Plots.getAll(),        
+        files: Plots.getAll(),    
+        bestDeadline: Block.getBestNonce(),
+        best360Deadline: Block.getLast360RoundNonce(),
       },
     }))
   }
@@ -33,6 +35,21 @@ class Client{
         data: freshBlock
       }))      
     }
+  }  
+
+  sendPoolSubscribe(data){
+    this.ws.send(JSON.stringify({
+      command: 'poolSubscribe',
+      data,
+    }))
+  }
+
+  static boardcastPoolSubscribe(data){
+    return aigle.map(this.clients, (n) => n.sendPoolSubscribe(data))
+  }
+
+  static boardcastPoolInfo(){
+    return aigle.map(this.clients, (n) => n.sendPoolLastBlock())
   }
 
   static boardcastBaseInfo(){
@@ -60,10 +77,18 @@ class Client{
     client.sendBaseInfo()    
 
     this.clients.push(client)
+
+    if (this.clients.length == 1){
+      Pool.connect()
+    }
   }
 
   static remove(ws){
     this.clients = _.filter(this.clients, (n) => n.ws != ws)
+
+    if (this.clients.length == 0){
+      Pool.disconnect()
+    }
   }
 
   static getAll(){

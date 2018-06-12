@@ -41,17 +41,8 @@ router.post("/block/mined", function* (){
   this.body = {}
 })
 
-router.post("/block/submitting", function* (){ 
+router.post("/block/confiremd", function* (){ 
   
 })
-
-router.post("/block/submitted", function* (){ 
-  
-})
-
-router.post("/plots", function* (){ 
-  
-})
-
 
 module.exports = router

@@ -5,10 +5,16 @@ class Block{
   }
 
   static getBestNonce(){
-    return this.best
+    return _.chain(this.best).get("deadline").value()
   }
 
   static getLast360RoundNonce(){
+    return _.chain(this.all)
+            .slice(-360)
+            .map("best")
+            .compact()
+            .orderBy(["deadline"], ["asc"])
+            .first().get("deadline").value()
   }
 
   static saveStatsData(params){
@@ -17,21 +23,19 @@ class Block{
         return
       }      
 
+      //global best
       if (!this.best.best || this.best.best < params.best){
         this.best = params
       }
 
-      r.nonces = r.nonces || []
-      r.nonces.push(_.omit(params, ["height"]))
-    }).value()
-  }
+      if (!r.best || r.best < params.best){
+        r.best = params
+      }
 
-  // static findBestNonce(height){
-  //   return _.chain(this.all)
-  //           .find((n) => n.height == height)
-  //           .get("nonces")
-  //           .orderBy(["best"], ["desc"]).first().value()
-  // }
+      r.nonces = r.nonces || []
+      r.nonces.push(params)
+    }).value()
+  }  
 
   static save(params){
     return _.chain(this.all)
@@ -58,7 +62,6 @@ class Block{
     this.all = []
 
     this.best = {}
-    this.last360RoundBest = {}
   }  
 }
 

@@ -25,14 +25,7 @@ const actions = {
 
 const mutations = {
   [types.SET_BLOCK_INFO] (state, { data }){
-    console.log(data)
-
-    _.merge(state, data)
-
-    // state.height = data.height        
-    // state.baseTarget = data.baseTarget
-    // state.targetDeadline = data.targetDeadline
-    // state.difficulty = data.difficulty
+    _.merge(state, data)    
   }
 }
 

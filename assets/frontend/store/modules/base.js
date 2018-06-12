@@ -20,13 +20,9 @@ const actions = {
 }
 
 const mutations = {
-  [types.SET_BASE_INFO] (state, { data }){
-    console.log(data)
-
-    state.mined = data.mined
-    state.capacity = data.capacity
+  [types.SET_BASE_INFO] (state, { data }){     
+    _.merge(state, _.omit(data, "files"))
     state.files = data.files
-    // _.merge(state, data)
   }
 }
 

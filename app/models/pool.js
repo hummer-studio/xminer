@@ -1,9 +1,7 @@
 'use strict'
 
-const WebSocketClient = require('websocket').client,
+const WebSocketClient = require('ws'),
                   url = require("url")
-
-require("./plots")                  
                   
 class Pool{
   constructor(ws){
@@ -14,66 +12,69 @@ class Pool{
     this.ws.send(account)
   }
 
-  static get(){
-    return this.instance
+  static clear(){
+    if (this.timer){
+      clearInterval(this.timer)
+      this.timer = null
+    }
+
+    if (this.autoReconnect){
+      setTimeout(this.connect, 1000 * 5)
+    }
   }
 
-  static async initialize(){
-    this.lastBlock;
+  static disconnect(){
+    this.autoReconnect = false
+    this.clear()
 
-    ///////////////////////////////////////////
-    const client = new WebSocketClient();
+    this.instance.ws.terminate();
+  }
 
-    client.on('connectFailed', (error) => {
-      logger.error(`connectFailed: ${error.toString()}`)
+  static connect(){
+    this.autoReconnect = true
 
-      clearInterval(this.timer)
-      setTimeout(Pool.initialize, 1000 * 5)        
-    });
+    const u = url.parse(SETTINGS.pool_address)
+    const client = new WebSocketClient(`${u.protocol == "https:" ? "wss" : "ws"}://${u.host}/ws`);
   
-    client.on('connect', (connection) => {
-      logger.info(`ws connected`);
+    client.on('open', () => {
+      logger.info(`ws connected`);      
 
-      // connection.on('error', function(error) {
-      //   logger.error("Connection Error: " + error.toString());
-      // })
+      this.instance = new Pool(client)
 
-      //auto reconnect
-      connection.on('close', () => {
-        logger.error(`closed`)
-
-        clearInterval(this.timer)
-        setTimeout(Pool.initialize, 1000 * 5)        
-      })
-
-      connection.on('message', function(message) {
-        const data = JSON.parse(message.utf8Data)
-        if (data.generationSignature){
-          Pool.lastBlock = data
-          
-          Client.boardcast({
-            command: 'poolInfo',
-            data,
-          })
-        }else if (data.address){
-          Client.boardcast({
-            command: 'poolSubscribe',
-            data,
-          })
-        }      
-      })
-
-      this.instance = new Pool(connection)      
+      logger.info(`subscribe: ${Plots.getAccountId()}`)
       this.instance.subscribe(Plots.getAccountId())
 
       this.timer = setInterval(() => {
-        connection.ping()
+        client.ping()
       }, 1000 * 10)
     });
 
-    const u = url.parse(SETTINGS.pool_address)
+    client.on('error', (err) => {
+      logger.error(`pool ws error.`)
+    })
 
-    client.connect(`${u.protocol == "https:" ? "wss" : "ws"}://${u.host}/ws`);
+    client.on('close', () => {
+      logger.warn(`pool ws closed`)
+
+      Pool.clear()
+    })
+
+    client.on('message', function(message) {
+      const data = JSON.parse(message)
+
+      if (data.generationSignature){
+        Pool.lastBlock = data
+        
+        Client.boardcastPoolInfo()
+      }else if (data.address){
+        Client.boardcastPoolSubscribe(data)          
+      }      
+    })
+  }
+
+  static async initialize(){
+    this.lastBlock;    
+    this.autoReconnect = true;
   }
 }
 
