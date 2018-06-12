@@ -8,10 +8,24 @@ bool _debug = false;
 
 namespace Mine {
 
-void mine(CALLBACK_CONTEXT* pData){    
-  char signature[33] = {};
-  xstr2strr(signature, sizeof(signature), pData->generationSignature.c_str());  
+uint32_t getScoop(const char *signature, size_t size, uint64_t height){    
+  char scoopgen[40];  
+  memmove(scoopgen, signature, size - 1);
+  const char *mov = (char*)&height;
+  for (auto i = 0; i < sizeof(height); i++){
+    scoopgen[32 + i] = mov[7 - i];
+  }  
 
+  sph_shabal_context x;
+  sph_shabal256_init(&x);
+  sph_shabal256(&x, (const unsigned char*)(const unsigned char*)scoopgen, 40);
+  char xcache[32];
+  sph_shabal256_close(&x, xcache);  
+
+  return (((unsigned char)xcache[31]) + 256 * (unsigned char)xcache[30]) % 4096;
+}
+
+void mine(CALLBACK_CONTEXT* pData){
   uint64_t accountId;
   uint64_t nonceStart;
   uint64_t nonceSize;
@@ -30,18 +44,10 @@ void mine(CALLBACK_CONTEXT* pData){
   log(printf("generationSignature: %s, height: %llu\n", pData->generationSignature.c_str(), pData->height));
   log(printf("%llu_%llu_%llu_%llu\n", accountId, nonceStart, nonceSize, staggerSize));
 
-  char scoopgen[40];  
-  memmove(scoopgen, signature, sizeof(signature) - 1);
-  const char *mov = (char*)&pData->height;
-  scoopgen[32] = mov[7]; scoopgen[33] = mov[6]; scoopgen[34] = mov[5]; scoopgen[35] = mov[4]; scoopgen[36] = mov[3]; scoopgen[37] = mov[2]; scoopgen[38] = mov[1]; scoopgen[39] = mov[0];
-
-  sph_shabal_context x;
-  sph_shabal256_init(&x);
-  sph_shabal256(&x, (const unsigned char*)(const unsigned char*)scoopgen, 40);
-  char xcache[32];
-  sph_shabal256_close(&x, xcache);
-
-  uint32_t scoop = (((unsigned char)xcache[31]) + 256 * (unsigned char)xcache[30]) % 4096;  
+  char signature[33] = {};
+  xstr2strr(signature, sizeof(signature), pData->generationSignature.c_str());  
+  uint32_t scoop = getScoop(signature, sizeof(signature), pData->height);
+  pData->result.scoop = scoop;
 
   auto f = open(pData->path.c_str(), O_RDONLY);  
   log(printf("open: %s %08X\n", pData->path.c_str(), f));
@@ -341,6 +347,20 @@ public:
     worker->Queue();
   }
 
+  static Value getScoop(const CallbackInfo& info) {
+    auto params = info[0].As<Object>();
+
+    auto generationSignature = params.Get("generationSignature").As<String>().Utf8Value();    
+    auto height = params.Get("height").As<Number>().Int64Value();
+
+    char signature[33] = {};
+    xstr2strr(signature, sizeof(signature), generationSignature.c_str());  
+
+    auto scoop = Mine::getScoop(signature, sizeof(signature), height);
+
+    return Value(Number::New(info.Env(), scoop));
+  }
+
 private:
   MineWorker(Function cb, CALLBACK_CONTEXT &ctx) : AsyncWorker(cb) {
     _context = ctx;
@@ -374,6 +394,7 @@ protected:
     result.Set("readedSize", Number::New(Env(), _context.result.readedSize));
     result.Set("readElapsed", Number::New(Env(), _context.result.readElapsed));
     result.Set("calcElapsed", Number::New(Env(), _context.result.calcElapsed));
+    result.Set("scoop", Number::New(Env(), _context.result.scoop));
     
     Callback().MakeCallback(Receiver().Value(), std::initializer_list<napi_value>{
       Boolean::New(Env(), false), result
@@ -394,6 +415,7 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
   log(printf("pthread_self: %llX\n", pthread_self()));
 
   exports["run"] = Function::New(env, MineWorker::run);
+  exports["getScoop"] = Function::New(env, MineWorker::getScoop);
   return exports;
 }
 

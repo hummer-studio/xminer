@@ -9,7 +9,7 @@ const dirRecursive = require("recursive-readdir"),
 
 
 const HTTP_TIMEOUT = 1000 * 15             
-const REFRESH_MINE_INFO_TIME = 1000 * 15             
+const REFRESH_MINE_INFO_TIME = 1000 * 3
 const MAX_RETRY_TIMES = 10
 const ENV_CURRENT_HEIGHT = "currentHeight"
 const BASE_DIFFICULTY = 4398046511104
@@ -18,21 +18,19 @@ let _currentHeight = 0
 
 class Pool{
   static getBlock(){
-    return retry(1, 0, () => {
-      return request.defaults({timeout: HTTP_TIMEOUT})({
-        url: `${SETTINGS.pool_address}/burst`,
-        qs: {
-          requestType: 'getMiningInfo'
-        },
-        json: true,
-      }).then((r) => {
-        if (!r.height){
-          logger.wanr('get mine info failed.')
-          throw r
-        }
+    return request.defaults({timeout: HTTP_TIMEOUT})({
+      url: `${SETTINGS.pool_address}/burst`,
+      qs: {
+        requestType: 'getMiningInfo'
+      },
+      json: true,
+    }).then((r) => {
+      if (!r.height){
+        logger.warn('get mine info failed.')
+        throw r
+      }
 
-        return r
-      })
+      return r
     })
   }
 
@@ -57,8 +55,15 @@ class Pool{
           throw r
         }
 
-        logger.info(`pool confirmed the nonce. ${height} ${nonce}`)
+        logger.info(`pool confirmed the nonce. ${JSON.stringify(_.merge({}, r, {height, nonce}))}`)
         return r
+      }).catch((e) => {
+        if (_.get(e, "error.errorCode")){
+          logger.error(e.error)
+          return
+        }
+
+        throw e
       })
     })
   }
@@ -83,36 +88,45 @@ class Communication{
 }
 
 async function worker(files){
-  const r = await Pool.getBlock()
+  const r = await Pool.getBlock().catch((e) => {    
+    if (e.error.code === 'ETIMEDOUT'){
+      logger.warn("get block timeout. try again later.")
+      return
+    }
 
-  if (_currentHeight > r.height){
-    logger.info(`not found more height. ${_currentHeight} ${r.height}`)
+    throw e    
+  })
+
+  if (!r || _currentHeight >= r.height){
+    //not found more height.
     return
   }
-  
-  logger.info(r)
+
+  process.env[ENV_CURRENT_HEIGHT] = r.height
+  _currentHeight = r.height
+
+  logger.info(`block: ${JSON.stringify(r)}`)
   
   const difficulty = BASE_DIFFICULTY / 240 / r.baseTarget
   const targetDeadline = SETTINGS.deadline ? _.min([r.targetDeadline, SETTINGS.deadline]) : r.targetDeadline
   const maxReader = SETTINGS.max_reader == 0 ? _.min([SETTINGS.plots.length, 3]) : SETTINGS.max_reader  
   let best = targetDeadline * r.baseTarget
-  _currentHeight = r.height
 
   Communication.submitBlock(_.merge({}, r, {
     targetDeadline: targetDeadline,
     difficulty: difficulty,
-    maxReader: maxReader
+    maxReader: maxReader,
+    scoop: addon.getScoop({generationSignature: r.generationSignature, height: r.height}),
   }))
-
-  process.env[ENV_CURRENT_HEIGHT] = r.height
-  const f = aigle.promisify(async.eachLimit)(files, maxReader, (n, next) => {
-    if (Number(process.env[ENV_CURRENT_HEIGHT]) != r.height){      
-      logger.warn("found new block. skip this block.");
+  
+  await aigle.promisify(async.eachLimit)(files, maxReader, (n, next) => {
+    if (_currentHeight != r.height){
+      logger.warn(`found new block. skip this block. name: ${n.fileName}`);
       next()
       return
     }
 
-    logger.info(`mine ${n.fileName}`)
+    logger.info(`scanning ${n.fileName}`)
 
     addon.run({
       generationSignature: r.generationSignature, 
@@ -141,7 +155,7 @@ async function worker(files){
       }
 
       if (r.height < _currentHeight){
-        logger.warn(`the block is done. skip this nonce.`)
+        logger.warn(`the block is done. skip this nonce. name: ${n.fileName}`)
         next()
         return
       }
@@ -151,7 +165,7 @@ async function worker(files){
       logger.info(`found valid nonce: ${JSON.stringify(rr)}`)
       Pool.submit(rr.nonce, r.height, () => {
         if (rr.best > best){
-          logger.warn("has best nonce. skip this nonce.")
+          logger.warn(`has best nonce. skip this nonce. name: ${n.fileName}`)
           return false
         }
 
@@ -160,9 +174,7 @@ async function worker(files){
     })
   })
 
-  await f
-
-  logger.info(`mine done`)
+  logger.info(`height: ${r.height}, mining is done.`)
 }
 
 require("./config")(async function () {
@@ -174,7 +186,7 @@ require("./config")(async function () {
     // return _.filter(n, m => /_810000000_40960_40960$/.test(m.fileName))
     // return [_.find(n, m => /_4096$/.test(m.fileName))]
     // return _.filter(n, m => m.isPoc2)
-  })
+  })  
 
   setInterval(() => worker(r),  REFRESH_MINE_INFO_TIME)
 })

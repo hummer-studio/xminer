@@ -60,6 +60,7 @@ typedef struct {
 
   struct {
     uint64_t nonce;
+    uint32_t scoop;
     uint64_t deadline;
     uint64_t best;
 
