@@ -13,25 +13,25 @@
     <Row :gutter=10>
       <Col span="3">
         <Card class="x-card">
-          <p slot="title">Height</p>
+          <p slot="title" title="Height">Height</p>
           <p>{{ height }}</p>
         </Card>
       </Col>
       <Col span="3">
         <Card class="x-card">
-          <p slot="title">Mine Deadline</p>
+          <p slot="title" title="Mine Deadline">Mine Deadline</p>
           <p>{{ currentDeadline }}</p>
         </Card>
       </Col>      
       <Col span="3">
         <Card class="x-card">
-          <p slot="title">Best Deadline</p>
+          <p slot="title" title="Best Deadline">Best Deadline</p>
           <p>{{ deadline }}</p>
         </Card>
       </Col>
       <Col span="6">
         <Card class="x-card">
-          <p slot="title">Best Miner</p>
+          <p slot="title" title="Best Miner">Best Miner</p>
           <div v-if="accountId">
             <a :href="`https://explore.burst.cryptoguru.org/address/${this.accountId}`" target="_blank">{{ miner }}</a>
           </div>
@@ -49,37 +49,37 @@
     <Row :gutter=10>
       <Col span="5">
         <Card class="x-card">
-          <p slot="title">Address</p>
+          <p slot="title" title="Address">Address</p>
           <a :href="`https://explore.burst.cryptoguru.org/address/${this.address}`" target="_blank">{{ address }}</a>
         </Card>
       </Col>
       <Col span="3">
         <Card class="x-card">
-          <p slot="title">Effective Capacity</p>
+          <p slot="title" title="Effective Capacity">Effective Capacity</p>
           <p>{{ effectiveCapacity }} TB</p>          
         </Card>
       </Col> 
       <Col span="3">
         <Card class="x-card">
-          <p slot="title">Historical Share</p>
+          <p slot="title" title="Historical Share">Historical Share</p>
           <p>{{ historicalShare }}%</p>          
         </Card>
       </Col>      
       <Col span="3">
         <Card class="x-card">
-          <p slot="title">Last Active Blockheight</p>
+          <p slot="title" title="Last Active Blockheight">Last Active Blockheight</p>
           <p>{{ lastActiveBlockHeight }}</p>          
         </Card>
       </Col>      
       <Col span="3">
         <Card class="x-card">
-          <p slot="title">Valid Deadlines Last 360 Blocks</p>
+          <p slot="title" title="Valid Deadlines Last 360 Blocks">Valid Deadlines Last 360 Blocks</p>
           <p>{{ nConf }}</p>          
         </Card>
       </Col>      
       <Col span="3">
         <Card class="x-card">
-          <p slot="title">Pending</p>
+          <p slot="title" title="Pending">Pending</p>
           <p>{{ pending }} Burst</p>          
         </Card>
       </Col>      

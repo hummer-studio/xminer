@@ -8,32 +8,32 @@
     <Row :gutter=10>
       <Col span="3">
         <Card class='x-card'>
-          <p slot="title">Height</p>
+          <p slot="title" title="Height">Height</p>
           <p>{{ height }}</p>
         </Card>
       </Col>
       <Col span="3">
         <Card class='x-card'>
-          <p slot="title">Scoop</p>
+          <p slot="title" title="Scoop">Scoop</p>
           <p>{{ scoop }}</p>
         </Card>
       </Col>          
       <Col span="3">
         <Card class='x-card'>
-          <p slot="title">Base Target</p>
+          <p slot="title" title="Base Target">Base Target</p>
           <p>{{ baseTarget }}</p>
         </Card>
       </Col>      
       <Col span="3">
         <Card class='x-card'>
-          <p slot="title">Target Deadline</p>
+          <p slot="title" title="Target Deadline">Target Deadline</p>
           <p>{{ targetDeadline }}</p>
         </Card>
       </Col>   
 
       <Col span="3">
         <Card class='x-card'>
-          <p slot="title">Difficulty</p>
+          <p slot="title" title="Difficulty">Difficulty</p>
           <p>{{ difficulty }}</p>
         </Card>
       </Col>   

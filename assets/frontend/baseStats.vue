@@ -8,33 +8,33 @@
     <Row :gutter=10>
       <Col span="3">
         <Card class='x-card'>
-          <p slot="title">Mined Blocks</p>
+          <p slot="title" title="Mined Blocks">Mined Blocks</p>
           <p>{{ mined }}</p>
         </Card>
       </Col>
       <Col span="4">
         <Card class='x-card'>
-          <p slot="title">Confirmed Blocks</p>
+          <p slot="title" title="Confirmed Blocks">Confirmed Blocks</p>
           <p>{{ mined }}</p>
         </Card>
       </Col>      
       <Col span="3">
         <Card class='x-card'>
-          <p slot="title">Best Deadline</p>
+          <p slot="title" title="Best Deadline">Best Deadline</p>
           <p>{{ mined }}</p>
         </Card>
       </Col>   
 
-      <Col span="5">
+      <Col span="3">
         <Card class='x-card'>
-          <p slot="title">Best Deadline (360 rounds)</p>
+          <p slot="title" title="Best Deadline (360 rounds)">Best Deadline (360 rounds)</p>
           <p>{{ mined }}</p>
         </Card>
       </Col>  
 
       <Col span="3">
         <Card class='x-card'>
-          <p slot="title">Capacity</p>
+          <p slot="title" title="Capacity">Capacity</p>
           <a @click="modalCapacity = true">{{ capacity }}</a>
         </Card>
       </Col>            
