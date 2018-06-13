@@ -89,7 +89,7 @@
 </template>
 
 <script>
-import { mapGetters, mapActions } from 'vuex'
+import { mapState, mapGetters, mapActions } from 'vuex'
 
 export default {    
   data () {      
@@ -97,18 +97,17 @@ export default {
   },
 
   computed: {
+    ...mapState('Pool', [
+      "accountId", "address", "nConf", "lastActiveBlockHeight",
+    ]),
     ...mapGetters('Pool', {
       height: "height",
       deadline: "deadline",
       currentDeadline: "currentDeadline",
-      miner: "miner",
-      accountId: "accountId",
+      miner: "miner",      
 
-      address: "address",
       effectiveCapacity: "effectiveCapacity",
-      historicalShare: "historicalShare",
-      lastActiveBlockHeight: "lastActiveBlockHeight",
-      nConf: "nConf",
+      historicalShare: "historicalShare",      
       pending: "pending",
     }),
   },

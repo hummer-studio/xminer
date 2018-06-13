@@ -7,15 +7,14 @@ import { humanDeadline, humanSize } from "../../../../utilities"
 const state = {
   mined: 0,
   capacity: 0,
-  files: null,
+  files: [],
   best360Nonce: null,
   bestNonce: null,
 }
 
 const getters = {  
   mined: (state) => state.mined || "-",  
-  capacity: (state) => state.capacity ? humanSize(state.capacity) : "-",
-  files: (state) => state.files,
+  capacity: (state) => state.capacity ? humanSize(state.capacity) : "-",  
   best360Deadline: (state) => {
     const r = _.get(state, "best360Nonce.deadline")
     if (r){

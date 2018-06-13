@@ -62,7 +62,7 @@
 </template>
 
 <script>
-import { mapGetters, mapActions } from 'vuex'
+import { mapState, mapGetters, mapActions } from 'vuex'
 import { humanDeadline } from "../../utilities"
 
 export default {
@@ -93,6 +93,7 @@ export default {
   },
 
   computed: {
+    ...mapState("Block", ["nonces"]),
     ...mapGetters("Block", {
       height: "height",
       baseTarget: "baseTarget",
@@ -100,7 +101,6 @@ export default {
       difficulty: "difficulty",
       scoop: "scoop",
       deadline: "deadline",
-      nonces: "nonces",
     }),
 
     noncesData: function (){            

@@ -10,7 +10,7 @@ const state = {
   targetDeadline: 0,
   difficulty: 0,
   scoop: 0,  
-  nonces: null,
+  nonces: [],
   best: null,
 }
 
@@ -21,7 +21,6 @@ const getters = {
   difficulty: (state) => state.difficulty ? parseInt(state.difficulty) : "-",
   scoop: (state) => state.scoop || "-",
   deadline: (state) => state.best ? humanDeadline(state.best.deadline) : "-",
-  nonces: (state) => state.nonces,
 }
 
 const actions = {  

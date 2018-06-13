@@ -51,7 +51,7 @@
 </template>
 
 <script>
-import { mapGetters, mapActions } from 'vuex'
+import { mapState, mapGetters, mapActions } from 'vuex'
 import { humanDeadline, humanSize, humanSize2Bytes } from "../../utilities"
 
 export default {
@@ -94,10 +94,10 @@ export default {
   },
 
   computed: {
+    ...mapState("Base", ["files"]),
     ...mapGetters("Base", {
       mined: "mined",      
-      capacity: "capacity",
-      files: "files",
+      capacity: "capacity",      
       bestDeadline: "bestDeadline",
       best360Deadline: "best360Deadline",
     }),

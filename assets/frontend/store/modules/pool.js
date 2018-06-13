@@ -6,7 +6,7 @@ const state = {
   height: 0,
   miner: 0,
   deadline: 0,
-  accountId: null,
+  accountId: "",
 
   address: null,
   currentDeadline: 0,
@@ -26,14 +26,9 @@ const getters = {
               "-"
   },
 
-  miner: (state) => state.miner || "-",
-  accountId: (state) => state.accountId,
-
-  address: (state) => state.address,
+  miner: (state) => state.miner || "-",  
   effectiveCapacity: (state) => state.effectiveCapacity.toFixed(4),
-  historicalShare: (state) => (state.historicalShare * 100).toFixed(4),
-  lastActiveBlockHeight: (state) => state.lastActiveBlockHeight,
-  nConf: (state) => state.nConf,
+  historicalShare: (state) => (state.historicalShare * 100).toFixed(4),  
   pending: (state) => state.pending / 100000000,
 }
 
@@ -62,14 +57,13 @@ const actions = {
     }
 
     // ws.onerror = (err) => {
-    //   debugger
+    //   console.error(err)
     // }
 
     // ws.onopen = (env) => {
     // }
 
     ws.onclose = () => {      
-
       setTimeout(dispatch.bind(null, "connectWS"), 1000 * 5)
     }
   },
