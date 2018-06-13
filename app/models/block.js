@@ -3,14 +3,17 @@
 class Block{
   constructor(params){
     this.readedSize = 0
-    this.nonces = []
-    this.best = {}
+    this.nonces = []    
 
     _.merge(this, params)
   }
 
   getMinedProgress(){  
     return this.readedSize / Plots.getScanSize(this.height >= 502000)
+  }
+
+  getBestNonce(){
+    return _.chain(this.nonces).orderBy(["deadline"], ["asc"]).first().value()
   }
 
   static getBestNonce(){
@@ -20,7 +23,7 @@ class Block{
   static getLast360RoundNonce(){
     return _.chain(this.all)
             .slice(-360)
-            .map("best")
+            .map((n) => n.getBestNonce())
             .compact()
             .orderBy(["deadline"], ["asc"])
             .first().value()
@@ -44,11 +47,7 @@ class Block{
       }
 
       r.nonces = r.nonces || []
-      r.nonces.push(params)
-
-      if (!r.best || r.best.deadline > params.deadline){
-        r.best = params        
-      }      
+      r.nonces.push(params)      
     }).value()
   }  
 
@@ -62,6 +61,7 @@ class Block{
 
        const b = new Block(params)
        this.all.push(b)
+
        return b
      }).value()
   }

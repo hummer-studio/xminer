@@ -11,7 +11,6 @@ const state = {
   difficulty: 0,
   scoop: 0,  
   nonces: [],
-  best: null,
   progress: 0,
 }
 
@@ -19,7 +18,19 @@ const getters = {
   targetDeadline: (state) => state.targetDeadline ? humanDeadline(state.targetDeadline) : "-",
   difficulty: (state) => state.difficulty ? parseInt(state.difficulty) : "-",
   scoop: (state) => state.scoop || "-",
-  deadline: (state) => !_.isEmpty(state.best) ? humanDeadline(state.best.deadline) : "-",
+  deadline: (state) => {
+    return _.chain(state.nonces)
+            .orderBy(["deadline"], ["asc"])
+            .first()
+            .get("deadline")
+            .thru((n) => {
+              if (n){
+                return humanDeadline(n)
+              }
+
+              return "-"
+            }).value()
+  }
 }
 
 const actions = {  
@@ -29,7 +40,6 @@ const mutations = {
   [types.SET_BLOCK_INFO] (state, { data }){
     Object.assign(state, {
       nonces: [],
-      best: {}
     }, data)
   }
 }
