@@ -37,7 +37,7 @@ class Pool{
   static submit(nonce, height, confirmCallback){
     return retry(MAX_RETRY_TIMES, 200, () => {
       if (!confirmCallback()){
-        return
+        return aigle.resolve()
       }
 
       return request.defaults({timeout: HTTP_TIMEOUT})({
