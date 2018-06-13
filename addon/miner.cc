@@ -372,11 +372,7 @@ protected:
     //   SetError("test error");
     // }
     
-    log(printf("pthread_self: %llX\n", pthread_self()));
-
-    // printf("env1: %s\n", getenv("env1"));
-    // sleep(10);
-    // printf("env1: %s\n", getenv("env1"));
+    log(printf("pthread_self: %llX\n", pthread_self()));    
     
     log(printf("Execute\n"));
     mine(&_context);
@@ -413,6 +409,11 @@ protected:
 
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
   log(printf("pthread_self: %llX\n", pthread_self()));
+
+  auto debug = getenv("DEBUG");
+  if (debug){
+    _debug = strcmp(debug, "true") == 0;
+  }
 
   exports["run"] = Function::New(env, MineWorker::run);
   exports["getScoop"] = Function::New(env, MineWorker::getScoop);
