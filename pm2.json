@@ -1,26 +1,20 @@
 {
   "apps": [
     {
-      "name": "hmMiner-backend",
+      "name": "xMiner-backend",
       "script": "app.js",
       "instances": 1,
-      "exec_mode": "cluster",
-      "env": {
-        "NODE_ENV": "production"
-      },
+      "exec_mode": "cluster",      
       "out_file": "/dev/stdout",
       "error_file": "/dev/stderr",
       "merge_logs": true
     },
     {
-      "name": "hmMiner-backend",
-      "script": "app.js",      
-      "env": {
-        "NODE_ENV": "production"
-      },
+      "name": "xMiner",
+      "script": "miner.js",            
       "out_file": "/dev/stdout",
       "error_file": "/dev/stderr",
       "merge_logs": true
-    },
+    }
   ]
 }
