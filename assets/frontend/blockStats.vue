@@ -2,9 +2,10 @@
 </style>
 
 <template>
-  <Content class="layout-content">
+  <Content class="layout-content" v-if="height">
     <h2>Current Block Mine Stats</h2>
 
+    <Progress :percent="progress" style="margin-bottom: 10px" hide-info :stroke-width="3"></Progress>
     <Row :gutter=10>
       <Col span="3">
         <Card class='x-card'>
@@ -44,11 +45,11 @@
         </Card>
       </Col>   
 
-      <Col span="3">
+      <!-- <Col span="3">
         <i-circle :percent="80" :size="90" style="margin: 5px 10px">
           <span class="demo-Circle-inner" style="font-size: 24px">80%</span>
         </i-circle>
-      </Col>
+      </Col> -->
     </Row>
 
     <Modal
@@ -70,6 +71,8 @@ export default {
     return  {
       tableWidth: 1024,
       modalNonces: false,
+      progress: 0,
+
       nonceInfoColumn: [
         {
           title: 'name',
@@ -93,9 +96,8 @@ export default {
   },
 
   computed: {
-    ...mapState("Block", ["nonces"]),
+    ...mapState("Block", ["height", "nonces"]),
     ...mapGetters("Block", {
-      height: "height",
       baseTarget: "baseTarget",
       targetDeadline: "targetDeadline",
       difficulty: "difficulty",
@@ -117,7 +119,15 @@ export default {
   methods: {      
   },
 
-  mounted () {      
+  mounted () {
+    const rr = setInterval(() => {
+      if (this.progress >= 100){
+        clearInterval(rr)
+        return
+      }
+
+      this.progress += 1
+    }, 100)
   }
 }
 </script>

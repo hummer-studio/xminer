@@ -24,14 +24,14 @@ class Block{
       }      
 
       //global best
-      if (!this.best || this.best.best > params.best){
+      if (!this.best || this.best.deadline > params.deadline){
         this.best = params
       }      
 
       r.nonces = r.nonces || []
       r.nonces.push(params)
 
-      if (!r.best || r.best.best > params.best){
+      if (!r.best || r.best.deadline > params.deadline){
         r.best = params
 
         Client.boardcastBlock()

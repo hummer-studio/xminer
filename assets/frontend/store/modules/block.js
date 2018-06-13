@@ -14,8 +14,7 @@ const state = {
   best: null,
 }
 
-const getters = {  
-  height: (state) => state.height || "-",
+const getters = {    
   baseTarget: (state) => state.baseTarget || "-",
   targetDeadline: (state) => state.targetDeadline ? humanDeadline(state.targetDeadline) : "-",
   difficulty: (state) => state.difficulty ? parseInt(state.difficulty) : "-",

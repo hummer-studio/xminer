@@ -6,7 +6,7 @@
 </style>
 
 <template>  
-  <div>
+  <div v-if="height">
     <Content class="layout-content">
     <h2>Pool Stats</h2>
     
@@ -98,10 +98,9 @@ export default {
 
   computed: {
     ...mapState('Pool', [
-      "accountId", "address", "nConf", "lastActiveBlockHeight",
+      "height", "accountId", "address", "nConf", "lastActiveBlockHeight",
     ]),
     ...mapGetters('Pool', {
-      height: "height",
       deadline: "deadline",
       currentDeadline: "currentDeadline",
       miner: "miner",      

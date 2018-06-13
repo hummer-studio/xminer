@@ -24,7 +24,7 @@ router.post("/block/mined", function* (){
 
   Plots.saveStatsData(_.pick(this.params, ["fileName", "readedSize", "readElapsed", "calcElapsed"]))
   if (nonce > 0){  
-    Block.saveStatsData(_.pick(this.params, ["fileName", "height", "nonce", "deadline", "best"]))
+    Block.saveStatsData(_.pick(this.params, ["fileName", "height", "nonce", "deadline"]))
   }
 
   Client.boardcastBaseInfo()  

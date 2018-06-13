@@ -18,7 +18,6 @@ const state = {
 }
 
 const getters = {
-  height: (state) => state.height || "-",
   deadline: (state) => state.deadline ? humanDeadline(state.deadline) : state.deadline || "-",
   currentDeadline: (state) => {
     return state.height == state.lastActiveBlockHeight && state.currentDeadline ?
