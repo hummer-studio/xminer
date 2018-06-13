@@ -44,7 +44,7 @@
 extern bool _debug;
 
 typedef struct {
-  napi_deferred deferred;
+  // napi_deferred deferred;
 
   bool isPoc2;
   std::string path;
@@ -54,9 +54,9 @@ typedef struct {
   uint64_t baseTarget;
   uint64_t targetDeadline;
 
-  napi_async_context ctx;
-  napi_ref callback;
-  napi_value jsThis;
+  // napi_async_context ctx;
+  // napi_ref callback;
+  // napi_value jsThis;
 
   struct {
     uint64_t nonce;
@@ -68,7 +68,8 @@ typedef struct {
     time_t readElapsed;
     time_t calcElapsed;
   } result;
-  napi_async_work mainWorker;
+
+  // napi_async_work mainWorker;
 } CALLBACK_CONTEXT;
 
 
@@ -94,7 +95,7 @@ public:
   }
 };
 
-inline void procscoop_callback(CALLBACK_CONTEXT* pData, uint64_t wertung, uint64_t nonce){  
+inline void procscoop_callback(CALLBACK_CONTEXT* pData, uint64_t wertung, uint64_t nonce){    
 
   if (wertung / pData->baseTarget <= pData->targetDeadline){    
     log(printf("procscoop_callback: %s %llu %llu %llu %llu %llu\n", pData->name.c_str(), nonce, wertung, wertung / pData->baseTarget, pData->baseTarget, pData->targetDeadline));

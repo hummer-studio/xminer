@@ -41,7 +41,7 @@ void mine(CALLBACK_CONTEXT* pData){
   auto isPoc2Compat = pData->isPoc2 != (pData->height >= POC2_START_BLOCK);
   
   log(printf("filename: %s poc2: %X\n", pData->name.c_str(), pData->isPoc2));
-  log(printf("generationSignature: %s, height: %llu\n", pData->generationSignature.c_str(), pData->height));
+  log(printf("generationSignature: %s, height: %llu targetDeadline: %llu\n", pData->generationSignature.c_str(), pData->height, pData->targetDeadline));
   log(printf("%llu_%llu_%llu_%llu\n", accountId, nonceStart, nonceSize, staggerSize));
 
   char signature[33] = {};
@@ -61,7 +61,7 @@ void mine(CALLBACK_CONTEXT* pData){
   char *pBuffer = new char[bufferSize * SCOOP_SIZE];
   char *pBuffer2 = isPoc2Compat ? new char[bufferSize * SCOOP_SIZE] : NULL;  
 
-  log(printf("nonceSize: %llu, BufferSize: %08zX, scoop: %08X\n", nonceSize, bufferSize, scoop));
+  log(printf("nonceSize: %llu, BufferSize: %08zX, scoop: %d\n", nonceSize, bufferSize, scoop));
 
   for (uint64_t n = 0; n < nonceSize; n += staggerSize){
     auto start = n * PLOT_SIZE + scoop * staggerSize * SCOOP_SIZE;
@@ -125,7 +125,7 @@ void mine(CALLBACK_CONTEXT* pData){
 
       tt.reInitialize();
 
-      #ifdef __AVX2__        
+      #ifdef __AVX2__
         procscoop_m256_8(signature, n + nonceStart + i, bufferSize, pBuffer, pData);// Process block AVX2
       #else
         #ifdef __AVX__
@@ -382,7 +382,6 @@ protected:
     auto result = Object::New(Env());
     result.Set("nonce", Number::New(Env(), _context.result.nonce));
     result.Set("deadline", Number::New(Env(), _context.result.deadline));
-    result.Set("best", Number::New(Env(), _context.result.best));
     result.Set("readedSize", Number::New(Env(), _context.result.readedSize));
     result.Set("readElapsed", Number::New(Env(), _context.result.readElapsed));
     result.Set("calcElapsed", Number::New(Env(), _context.result.calcElapsed));
