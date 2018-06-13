@@ -23,7 +23,7 @@ const getters = {
   currentDeadline: (state) => {
     return state.height == state.lastActiveBlockHeight && state.currentDeadline ?
               humanDeadline(state.currentDeadline) : 
-              state.currentDeadline || "-"
+              "-"
   },
 
   miner: (state) => state.miner || "-",
