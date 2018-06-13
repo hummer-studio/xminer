@@ -71,12 +71,12 @@ const actions = {
 
 const mutations = {
   [types.SET_POOL_INFO] (state, { data }){
-    _.merge(state, _.omit(data, "minerId"))    
+    Object.assign(state, _.omit(data, "minerId"))    
     state.accountId = data.minerID
   },
 
   [types.SET_ACCOUNT_INFO] (state, { data }){
-    _.merge(state, _.omit(data, "deadline"))
+    Object.assign(state, _.omit(data, "deadline"))
     state.currentDeadline = data.deadline
   }
 }

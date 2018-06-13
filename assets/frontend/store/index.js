@@ -7,11 +7,12 @@ import Block from './modules/block'
 
 Vue.use(Vuex)
 
-const debug = process.env.NODE_ENV !== 'production'
+const debug = !isProduction
 
 export default new Vuex.Store({
   state: {
   },
+
   // actions,
   // getters,
   modules: {
@@ -19,6 +20,7 @@ export default new Vuex.Store({
     Pool,   
     Block 
   },
+
   strict: debug,
   // plugins: debug ? [createLogger()] : []
 })

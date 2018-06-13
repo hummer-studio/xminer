@@ -20,7 +20,7 @@ const getters = {
   targetDeadline: (state) => state.targetDeadline ? humanDeadline(state.targetDeadline) : "-",
   difficulty: (state) => state.difficulty ? parseInt(state.difficulty) : "-",
   scoop: (state) => state.scoop || "-",
-  deadline: (state) => state.best ? humanDeadline(state.best.deadline) : "-",
+  deadline: (state) => !_.isEmpty(state.best) ? humanDeadline(state.best.deadline) : "-",
 }
 
 const actions = {  
@@ -28,7 +28,10 @@ const actions = {
 
 const mutations = {
   [types.SET_BLOCK_INFO] (state, { data }){
-    _.merge(state, {nonces: []}, data)    
+    Object.assign(state, {
+      nonces: [],
+      best: {}
+    }, data)
   }
 }
 
