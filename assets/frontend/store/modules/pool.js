@@ -73,8 +73,6 @@ const actions = {
 
 const mutations = {
   [types.SET_POOL_INFO] (state, { data }){
-    console.log(data)
-
     _.merge(state, _.omit(data, "minerId"))    
     state.accountId = data.minerID
   },

@@ -21,14 +21,14 @@
       <Col span="3">
         <Card class='x-card'>
           <p slot="title" title="Best Deadline">Best Deadline</p>
-          <p>{{ mined }}</p>
+          <p v-html="bestDeadline"></p>
         </Card>
       </Col>   
 
       <Col span="3">
         <Card class='x-card'>
           <p slot="title" title="Best Deadline (360 rounds)">Best Deadline (360 rounds)</p>
-          <p>{{ mined }}</p>
+          <p v-html="best360Deadline"></p>
         </Card>
       </Col>  
 
@@ -42,11 +42,11 @@
 
     <Modal
       v-model="modalCapacity"
-      :title="`Total files: ${files.length}`"
+      :title="`Total files: ${(files || []).length}`"
       :width="tableWidth + 30"
     >
       <div slot="footer"></div>
-      <Table border :columns="columns5" :data="data5" height="500" :width="tableWidth"></Table>
+      <Table border :columns="plotInfoColumn" :data="plotData" height="500" :width="tableWidth"></Table>
     </Modal>
   </Content>
 </template>
@@ -61,7 +61,7 @@ export default {
       tableWidth: 1024,
 
       modalCapacity: false,
-      columns5: [
+      plotInfoColumn: [
         {
           title: 'name',
           key: 'name',
@@ -98,10 +98,12 @@ export default {
     ...mapGetters("Base", {
       mined: "mined",      
       capacity: "capacity",
-      files: "files"
+      files: "files",
+      bestDeadline: "bestDeadline",
+      best360Deadline: "best360Deadline",
     }),
 
-    data5: function (){      
+    plotData: function (){      
       return _.chain(this.files).map((n) => {
         return {
           name: n.fileName,

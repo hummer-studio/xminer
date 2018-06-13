@@ -5,7 +5,7 @@ class Block{
   }
 
   static getBestNonce(){
-    return _.chain(this.best).get("deadline").value()
+    return this.best
   }
 
   static getLast360RoundNonce(){
@@ -14,7 +14,7 @@ class Block{
             .map("best")
             .compact()
             .orderBy(["deadline"], ["asc"])
-            .first().get("deadline").value()
+            .first().value()
   }
 
   static saveStatsData(params){
@@ -24,16 +24,18 @@ class Block{
       }      
 
       //global best
-      if (!this.best.best || this.best.best < params.best){
+      if (!this.best || this.best.best > params.best){
         this.best = params
-      }
-
-      if (!r.best || r.best < params.best){
-        r.best = params
-      }
+      }      
 
       r.nonces = r.nonces || []
       r.nonces.push(params)
+
+      if (!r.best || r.best.best > params.best){
+        r.best = params
+
+        Client.boardcastBlock()
+      }
     }).value()
   }  
 
@@ -61,7 +63,7 @@ class Block{
   static async initialize(){
     this.all = []
 
-    this.best = {}
+    this.best = null
   }  
 }
 

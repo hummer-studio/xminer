@@ -27,7 +27,11 @@ class Pool{
     this.autoReconnect = false
     this.clear()
 
-    this.instance.ws.terminate();
+    if (this.instance){
+      this.instance.ws.terminate();
+
+      this.instance = null
+    }    
   }
 
   static connect(){
@@ -45,7 +49,10 @@ class Pool{
       this.instance.subscribe(Plots.getAccountId())
 
       this.timer = setInterval(() => {
-        client.ping()
+        try{
+          client.ping()
+        }catch(e){}
+        
       }, 1000 * 10)
     });
 
@@ -56,7 +63,7 @@ class Pool{
     client.on('close', () => {
       logger.warn(`pool ws closed`)
 
-      Pool.clear()
+      this.clear()
     })
 
     client.on('message', function(message) {
@@ -73,6 +80,7 @@ class Pool{
   }
 
   static async initialize(){
+    this.instance;
     this.lastBlock;    
     this.autoReconnect = true;
   }

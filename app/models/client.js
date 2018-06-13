@@ -11,9 +11,9 @@ class Client{
       data: {
         mined: Block.getAll().length,
         capacity: Plots.getSize(),
-        files: Plots.getAll(),    
-        bestDeadline: Block.getBestNonce(),
-        best360Deadline: Block.getLast360RoundNonce(),
+        files: _.chain(Plots.getAll()).map((n) => _.omit(n, ["fullPath", "isPoc2"])).value(),
+        bestNonce: Block.getBestNonce(),
+        best360Nonce: Block.getLast360RoundNonce(),
       },
     }))
   }

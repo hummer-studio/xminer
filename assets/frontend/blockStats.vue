@@ -14,6 +14,12 @@
       </Col>
       <Col span="3">
         <Card class='x-card'>
+          <p slot="title" title="Best Deadline">Best Deadline</p>          
+          <a @click="modalNonces = true">{{ deadline }}</a>
+        </Card>
+      </Col>   
+      <Col span="3">
+        <Card class='x-card'>
           <p slot="title" title="Scoop">Scoop</p>
           <p>{{ scoop }}</p>
         </Card>
@@ -43,16 +49,48 @@
           <span class="demo-Circle-inner" style="font-size: 24px">80%</span>
         </i-circle>
       </Col>
-    </Row>   
+    </Row>
+
+    <Modal
+      v-model="modalNonces"
+      :title="`Total files:`"
+      :width="tableWidth + 30"
+    >
+      <div slot="footer"></div>
+      <Table border :columns="nonceInfoColumn" :data="noncesData" height="500" :width="tableWidth"></Table>
+    </Modal>
   </Content>  
 </template>
 
 <script>
 import { mapGetters, mapActions } from 'vuex'
+import { humanDeadline } from "../../utilities"
 
 export default {
   data () {      
-    return  {}
+    return  {
+      tableWidth: 1024,
+      modalNonces: false,
+      nonceInfoColumn: [
+        {
+          title: 'name',
+          key: 'name',
+          width: 500,          
+        },
+        {
+          title: 'nonce',
+          key: 'nonce',
+        },
+        {
+          title: 'deadline',
+          key: 'deadline',
+        },
+        {
+          title: 'status',
+          key: 'status',
+        },
+      ]
+    }
   },
 
   computed: {
@@ -62,7 +100,19 @@ export default {
       targetDeadline: "targetDeadline",
       difficulty: "difficulty",
       scoop: "scoop",
-    })
+      deadline: "deadline",
+      nonces: "nonces",
+    }),
+
+    noncesData: function (){            
+      return _.chain(this.nonces).orderBy(["deadline", "asc"]).map((n) => {
+        return {
+          name: n.fileName,
+          nonce: n.nonce,
+          deadline: humanDeadline(n.deadline)
+        }
+      }).value()
+    }
   },
 
   methods: {      
