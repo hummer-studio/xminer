@@ -12,7 +12,7 @@ uint32_t getScoop(const char *signature, size_t size, uint64_t height){
   char scoopgen[40];  
   memmove(scoopgen, signature, size - 1);
   const char *mov = (char*)&height;
-  for (auto i = 0; i < sizeof(height); i++){
+  for (size_t i = 0; i < sizeof(height); i++){
     scoopgen[32 + i] = mov[7 - i];
   }  
 
@@ -59,18 +59,15 @@ void mine(CALLBACK_CONTEXT* pData){
   // bufferSize = (bufferSize - 1) / getpagesize() * getpagesize() + getpagesize();
   
   char *pBuffer = new char[bufferSize * SCOOP_SIZE];
-  char *pBuffer2 = NULL;
-  if (isPoc2Compat){
-    pBuffer2 = new char[bufferSize * SCOOP_SIZE];
-  }
+  char *pBuffer2 = isPoc2Compat ? new char[bufferSize * SCOOP_SIZE] : NULL;  
 
-  log(printf("nonceSize: %llu, BufferSize: %llX, scoop: %08X\n", nonceSize, bufferSize, scoop));
+  log(printf("nonceSize: %llu, BufferSize: %08zX, scoop: %08X\n", nonceSize, bufferSize, scoop));
 
-  for (auto n = 0; n < nonceSize; n += staggerSize){
-    auto start = 1L * n * PLOT_SIZE + scoop * staggerSize * SCOOP_SIZE;
-		auto MirrorStart = 1L * n * PLOT_SIZE + (4095 - scoop) * staggerSize * SCOOP_SIZE; //PoC2 Seek possition
+  for (uint64_t n = 0; n < nonceSize; n += staggerSize){
+    auto start = n * PLOT_SIZE + scoop * staggerSize * SCOOP_SIZE;
+    auto MirrorStart = n * PLOT_SIZE + (4095 - scoop) * staggerSize * SCOOP_SIZE; //PoC2 Seek possition
 
-    for (auto i = 0; i < staggerSize; i += bufferSize){
+    for (uint64_t i = 0; i < staggerSize; i += bufferSize){
 
       if (strcmp(currentHeight.c_str(), getenv(ENV_CURRENT_HEIGHT)) != 0){
         break;
@@ -80,7 +77,7 @@ void mine(CALLBACK_CONTEXT* pData){
         bufferSize = staggerSize - i;
       }
 
-      log(printf("loop: %llX, %llX, %llX\n", i, bufferSize, staggerSize));
+      log(printf("loop: %llX, %08zX, %llX\n", i, bufferSize, staggerSize));
 
       // size_t d1 = (start + i * 64) % getpagesize();
       // size_t d2 = getpagesize() - d1;
@@ -96,36 +93,35 @@ void mine(CALLBACK_CONTEXT* pData){
       // printf("mmap: %08X\n", pBuffer);
 
       log(printf("seek: %llX %llX\n", (uint64_t)start + i * SCOOP_SIZE, (uint64_t)MirrorStart + i * SCOOP_SIZE));
-      lseek(f, start + i * SCOOP_SIZE, SEEK_SET);
-      // f.seekg(start + i * 64);
-      // printf("seekg: %08X\n", f.fail());
+      lseek(f, start + i * SCOOP_SIZE, SEEK_SET);      
 
       CTickTime tt;
-
-      
+    
       size_t cb = read(f, pBuffer, bufferSize * SCOOP_SIZE);
       if (cb != bufferSize * SCOOP_SIZE){
-        log(printf("error: %llX %llX\n", bufferSize * SCOOP_SIZE, cb));
-        __asm__("int3");        
+        printf("read error: %08zX %08zX\n", bufferSize * SCOOP_SIZE, cb);
+        break;
       }
+
+      pData->result.readedSize += cb;
 
       if (isPoc2Compat){
         lseek(f, MirrorStart + i * SCOOP_SIZE, SEEK_SET);
         cb = read(f, pBuffer2, bufferSize * SCOOP_SIZE);
         if (cb != bufferSize * SCOOP_SIZE){
-          log(printf("error: %llX %llX\n", bufferSize * SCOOP_SIZE, cb));
-          __asm__("int3");        
+          printf("read error: %08zX %08zX\n", bufferSize * SCOOP_SIZE, cb);
+          break;
         }
 
-        for (auto t = 0; t < cb; t += SCOOP_SIZE) {
+        pData->result.readedSize += cb;
+        pData->result.readElapsed += tt.tick();
+
+        for (size_t t = 0; t < cb; t += SCOOP_SIZE) {
           memcpy(&pBuffer[t + HASH_SIZE], &pBuffer2[t + HASH_SIZE], HASH_SIZE); //copy second hash to correct place.
         }
+      }else{
+        pData->result.readElapsed += tt.tick();
       }
-
-      pData->result.readedSize += cb;
-      pData->result.readElapsed += tt.tick();
-      
-      // printf("%08X, currentPos: %llx\n", *(uint32_t*)pBuffer, (uint64_t)f.tellg());
 
       tt.reInitialize();
 
@@ -372,7 +368,7 @@ protected:
     //   SetError("test error");
     // }
     
-    log(printf("pthread_self: %llX\n", pthread_self()));    
+    log(printf("pthread_self: %llX\n", (uint64_t)pthread_self()));    
     
     log(printf("Execute\n"));
     mine(&_context);
@@ -381,7 +377,7 @@ protected:
 
   void OnOK() override {
     // HandleScope scope(_env);
-    log(printf("pthread_self: %llX\n", pthread_self()));
+    log(printf("pthread_self: %llX\n", (uint64_t)pthread_self()));
 
     auto result = Object::New(Env());
     result.Set("nonce", Number::New(Env(), _context.result.nonce));
@@ -408,7 +404,7 @@ protected:
 };
 
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
-  log(printf("pthread_self: %llX\n", pthread_self()));
+  log(printf("pthread_self: %llX\n", (uint64_t)pthread_self()));
 
   auto debug = getenv("DEBUG");
   if (debug){
