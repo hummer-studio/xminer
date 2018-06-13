@@ -12,7 +12,7 @@
           <p>{{ mined }}</p>
         </Card>
       </Col>
-      <Col span="4">
+      <Col span="3">
         <Card class='x-card'>
           <p slot="title" title="Confirmed Blocks">Confirmed Blocks</p>
           <p>{{ mined }}</p>
@@ -42,10 +42,9 @@
 
     <Modal
       v-model="modalCapacity"
-      :title="`Total files: ${(files || []).length}`"
       :width="tableWidth + 30"
     >
-      <div slot="footer"></div>
+      <div slot="footer">Total files: {{ (files || []).length }}</div>
       <Table border :columns="plotInfoColumn" :data="plotData" height="500" :width="tableWidth"></Table>
     </Modal>
   </Content>

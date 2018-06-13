@@ -20,7 +20,11 @@ const state = {
 const getters = {
   height: (state) => state.height || "-",
   deadline: (state) => state.deadline ? humanDeadline(state.deadline) : state.deadline || "-",
-  currentDeadline: (state) => state.currentDeadline ? humanDeadline(state.currentDeadline) : state.currentDeadline || "-",
+  currentDeadline: (state) => {
+    return state.height == state.lastActiveBlockHeight && state.currentDeadline ?
+              humanDeadline(state.currentDeadline) : 
+              state.currentDeadline || "-"
+  },
 
   miner: (state) => state.miner || "-",
   accountId: (state) => state.accountId,

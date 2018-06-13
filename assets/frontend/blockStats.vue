@@ -53,7 +53,6 @@
 
     <Modal
       v-model="modalNonces"
-      :title="`Total files:`"
       :width="tableWidth + 30"
     >
       <div slot="footer"></div>

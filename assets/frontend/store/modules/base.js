@@ -39,7 +39,7 @@ const actions = {
 
 const mutations = {
   [types.SET_BASE_INFO] (state, { data }){     
-    _.merge(state, data)
+    _.merge(state, {files: []}, data)
     // _.merge(state, _.omit(data, ["files", "bestNonce"]))
     // state.files = data.files
     // state.bestNonce = data.bestNonce
