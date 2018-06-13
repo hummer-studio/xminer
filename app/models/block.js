@@ -32,6 +32,12 @@ class Block{
         return
       }
 
+      r.readedSize += params.readedSize
+
+      if (!params.nonce){
+        return
+      }
+
       //global best
       if (!this.best || this.best.deadline > params.deadline){
         this.best = params
@@ -39,8 +45,6 @@ class Block{
 
       r.nonces = r.nonces || []
       r.nonces.push(params)
-
-      r.readedSize += params.readedSize
 
       if (!r.best || r.best.deadline > params.deadline){
         r.best = params        
