@@ -19,7 +19,7 @@ class Pool{
     }
 
     if (this.autoReconnect){
-      setTimeout(this.connect, 1000 * 5)
+      setTimeout(() => this.connect, 1000 * 5)
     }
   }
 
@@ -49,9 +49,7 @@ class Pool{
       this.instance.subscribe(Plots.getAccountId())
 
       this.timer = setInterval(() => {
-        try{
-          client.ping()
-        }catch(e){}
+        try{ client.ping() }catch(e){}
         
       }, 1000 * 10)
     });
@@ -66,11 +64,11 @@ class Pool{
       this.clear()
     })
 
-    client.on('message', function(message) {
+    client.on('message', (message) => {
       const data = JSON.parse(message)
 
       if (data.generationSignature){
-        Pool.lastBlock = data
+        this.lastBlock = data
         
         Client.boardcastPoolInfo()
       }else if (data.address){
