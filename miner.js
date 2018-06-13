@@ -89,7 +89,7 @@ class Communication{
 
 async function worker(files){
   const r = await Pool.getBlock().catch((e) => {    
-    if (e.error.code === 'ETIMEDOUT'){
+    if (e.error.code == 'ETIMEDOUT' || e.error.code == 'ESOCKETTIMEDOUT'){
       logger.warn("get block timeout. try again later.")
       return
     }
@@ -162,7 +162,7 @@ async function worker(files){
 
       best = rr.best
 
-      logger.info(`found valid nonce: ${JSON.stringify(rr)}`)
+      logger.info(`found valid nonce: ${JSON.stringify(_.merge({}, rr, {height: r.height}))}`)
       Pool.submit(rr.nonce, r.height, () => {
         if (rr.best > best){
           logger.warn(`has best nonce. skip this nonce. name: ${n.fileName}`)
