@@ -35,6 +35,19 @@ class Plots{
     return _.chain(this.getAll()).sumBy("fileSize").value()
   }
 
+  static getScanSize(isPoc2Block){
+    if (this.cacheScanSize){
+      return this.cacheScanSize
+    }
+
+    this.cacheScanSize = _.chain(this.getAll())
+                          .map(({nonceSize, isPoc2}) => {
+                            return isPoc2Block != isPoc2 ? nonceSize * 64 * 2 : nonceSize * 64
+                          }).sum().value()
+
+    return this.cacheScanSize                      
+  }
+
   static async initialize(){
     this.files = []    
 
@@ -54,6 +67,7 @@ class Plots{
                               return {
                                 fullPath,
                                 fileName,
+                                nonceSize,
                                 fileSize: fs.statSync(fullPath).size,
                                 isPoc2: staggerSize == null,
                               }                                

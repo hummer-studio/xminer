@@ -22,12 +22,15 @@ router.post("/block", function* (){
 router.post("/block/mined", function* (){ 
   const { nonce } = this.params
 
-  Plots.saveStatsData(_.pick(this.params, ["fileName", "readedSize", "readElapsed", "calcElapsed"]))
+  Plots.saveStatsData(_.pick(this.params, ["fileName", "readedSize", "readElapsed", "calcElapsed"]))  
   if (nonce > 0){  
-    Block.saveStatsData(_.pick(this.params, ["fileName", "height", "nonce", "deadline"]))
+    
   }
 
-  Client.boardcastBaseInfo()  
+  Block.saveStatsData(_.pick(this.params, ["fileName", "height", "nonce", "deadline", "readedSize"]))
+
+  Client.boardcastBaseInfo()
+  Client.boardcastBlock()
   
   this.body = {}
 })

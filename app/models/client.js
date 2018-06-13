@@ -28,11 +28,13 @@ class Client{
   }
 
   sendFreshBlock(){
-    const freshBlock = Block.getFresh()    
-    if (freshBlock){      
+    const freshBlock = Block.getFresh()
+    if (freshBlock){
       return this.ws.send(JSON.stringify({
         command: 'block',
-        data: freshBlock
+        data: _.merge({}, freshBlock, {
+          progress: freshBlock.getMinedProgress(),          
+        })
       }))      
     }
   }  
@@ -56,7 +58,7 @@ class Client{
     return aigle.map(this.clients, (n) => n.sendBaseInfo())
   }
 
-  static boardcastBlock(){
+  static boardcastBlock(){    
     return aigle.map(this.clients, (n) => n.sendFreshBlock())
   }
 

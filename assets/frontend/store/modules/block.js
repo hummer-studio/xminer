@@ -12,10 +12,10 @@ const state = {
   scoop: 0,  
   nonces: [],
   best: null,
+  progress: 0,
 }
 
 const getters = {    
-  baseTarget: (state) => state.baseTarget || "-",
   targetDeadline: (state) => state.targetDeadline ? humanDeadline(state.targetDeadline) : "-",
   difficulty: (state) => state.difficulty ? parseInt(state.difficulty) : "-",
   scoop: (state) => state.scoop || "-",

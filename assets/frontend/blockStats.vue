@@ -5,7 +5,7 @@
   <Content class="layout-content" v-if="height">
     <h2>Current Block Mine Stats</h2>
 
-    <Progress :percent="progress" style="margin-bottom: 10px" hide-info :stroke-width="3"></Progress>
+    <Progress :percent="progress * 100" style="margin-bottom: 10px" hide-info :stroke-width="3"></Progress>
     <Row :gutter=10>
       <Col span="3">
         <Card class='x-card'>
@@ -71,7 +71,6 @@ export default {
     return  {
       tableWidth: 1024,
       modalNonces: false,
-      progress: 0,
 
       nonceInfoColumn: [
         {
@@ -96,12 +95,10 @@ export default {
   },
 
   computed: {
-    ...mapState("Block", ["height", "nonces"]),
+    ...mapState("Block", ["height", "nonces", "baseTarget", "scoop", "progress"]),
     ...mapGetters("Block", {
-      baseTarget: "baseTarget",
       targetDeadline: "targetDeadline",
       difficulty: "difficulty",
-      scoop: "scoop",
       deadline: "deadline",
     }),
 
@@ -119,15 +116,7 @@ export default {
   methods: {      
   },
 
-  mounted () {
-    const rr = setInterval(() => {
-      if (this.progress >= 100){
-        clearInterval(rr)
-        return
-      }
-
-      this.progress += 1
-    }, 100)
+  mounted () {    
   }
 }
 </script>

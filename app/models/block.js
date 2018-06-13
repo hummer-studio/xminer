@@ -1,7 +1,16 @@
 'use strict'
 
 class Block{
-  constructor(){
+  constructor(params){
+    this.readedSize = 0
+    this.nonces = []
+    this.best = {}
+
+    _.merge(this, params)
+  }
+
+  getMinedProgress(){  
+    return this.readedSize / Plots.getScanSize(this.height >= 502000)
   }
 
   static getBestNonce(){
@@ -21,21 +30,21 @@ class Block{
     _.chain(this.all).find((n) => n.height == params.height).thru((r) => {
       if (!r){
         return
-      }      
+      }
 
       //global best
       if (!this.best || this.best.deadline > params.deadline){
         this.best = params
-      }      
+      }
 
       r.nonces = r.nonces || []
       r.nonces.push(params)
 
-      if (!r.best || r.best.deadline > params.deadline){
-        r.best = params
+      r.readedSize += params.readedSize
 
-        Client.boardcastBlock()
-      }
+      if (!r.best || r.best.deadline > params.deadline){
+        r.best = params        
+      }      
     }).value()
   }  
 
@@ -47,8 +56,9 @@ class Block{
          return
        }
 
-       this.all.push(params)       
-       return params
+       const b = new Block(params)
+       this.all.push(b)
+       return b
      }).value()
   }
   
