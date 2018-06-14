@@ -6,15 +6,16 @@ import { humanDeadline, humanSize } from "../../../../utilities"
 
 
 const state = {
-  mined: 0,
+  minedBlocks: 0,
+  confirmedBlocks: 0,
+  confirmedNonces: 0,
   capacity: 0,
   files: [],
   best360Nonce: null,
   bestNonce: null,
 }
 
-const getters = {  
-  mined: (state) => state.mined || "-",  
+const getters = {    
   capacity: (state) => state.capacity ? humanSize(state.capacity) : "-",  
   best360Deadline: (state) => {
     const r = _.get(state, "best360Nonce.deadline")

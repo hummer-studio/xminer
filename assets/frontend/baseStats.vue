@@ -9,13 +9,19 @@
       <Col span="3">
         <Card class='x-card'>
           <p slot="title" title="Mined Blocks">Mined Blocks</p>
-          <p>{{ mined }}</p>
+          <p>{{ minedBlocks }}</p>
         </Card>
       </Col>
       <Col span="3">
         <Card class='x-card'>
           <p slot="title" title="Confirmed Blocks">Confirmed Blocks</p>
-          <p>{{ mined }}</p>
+          <p>{{ confirmedBlocks }}</p>
+        </Card>
+      </Col>      
+      <Col span="3">
+        <Card class='x-card'>
+          <p slot="title" title="Confirmed Blocks">Confirmed Nonces</p>
+          <p>{{ confirmedNonces }}</p>
         </Card>
       </Col>      
       <Col span="4">
@@ -94,13 +100,16 @@ export default {
   },
 
   computed: {
-    ...mapState("Base", ["files"]),
-    ...mapGetters("Base", {
-      mined: "mined",      
-      capacity: "capacity",      
-      bestDeadline: "bestDeadline",
-      best360Deadline: "best360Deadline",
-    }),
+    ...mapState("Base", [
+      "files", "minedBlocks", 
+      "confirmedBlocks",
+      "confirmedNonces",
+    ]),
+    ...mapGetters("Base", [      
+      "capacity",
+      "bestDeadline",
+      "best360Deadline",
+    ]),
 
     plotData: function (){      
       return _.chain(this.files).map((n) => {

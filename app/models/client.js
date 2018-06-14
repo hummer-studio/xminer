@@ -6,10 +6,14 @@ class Client{
   }
   
   sendBaseInfo(){
+    const confirmedBlocks = Block.getConfirmedBlocks()
+
     return this.ws.send(JSON.stringify({
       command: 'baseInfo',
       data: {
-        mined: Block.getAll().length,
+        minedBlocks: Block.getAll().length,
+        confirmedBlocks: confirmedBlocks.length,
+        confirmedNonces: _.chain(confirmedBlocks).map((n) => n.nonces.length).sum().value(),
         capacity: Plots.getSize(),        
         bestNonce: Block.getBestNonce(),
         best360Nonce: Block.getLast360RoundNonce(),

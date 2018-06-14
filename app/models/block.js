@@ -16,6 +16,10 @@ class Block{
     return _.chain(this.nonces).orderBy(["deadline"], ["asc"]).first().value()
   }
 
+  static getConfirmedBlocks(){
+    return _.chain(this.all).filter((n) => n.nonces.length > 0).value()
+  }
+
   static getBestNonce(){
     return this.best
   }
