@@ -11,10 +11,8 @@ const dirRecursive = require("recursive-readdir"),
 const HTTP_TIMEOUT = 1000 * 15             
 const REFRESH_MINE_INFO_TIME = 1000 * 3
 const MAX_RETRY_TIMES = 10
-const ENV_CURRENT_HEIGHT = "currentHeight"
 const BASE_DIFFICULTY = 4398046511104
 const BACKEND_URL = "http://localhost"
-let _currentHeight = 0
 
 class Pool{
   static getBlock(){
@@ -83,44 +81,58 @@ class Communication{
       method: "post",
       url: `${BACKEND_URL}:${SETTINGS.port}/api/collect/block/mined`,
       json: params,
-    })    
+    })
+  }  
+}
+
+class GlobalHeight{  
+  static set(v){
+    process.env[this.k()] = v
   }
+
+  static get(){
+    return parseInt(process.env[this.k()])
+  }
+
+  static k(){ return "currentHeight" }
 }
 
 async function worker(files){
-  const r = await Pool.getBlock().catch((e) => {    
+  const { baseTarget, targetDeadline, generationSignature, height } = await Pool.getBlock().catch((e) => {
     if (e.error.code == 'ETIMEDOUT' || e.error.code == 'ESOCKETTIMEDOUT'){
       logger.warn("get block timeout. try again later.")
-      return
+      return {}
     }
 
     throw e    
   })
-
-  if (!r || _currentHeight >= r.height){
+  
+  if (!height || GlobalHeight.get() >= height){
     //not found more height.
     return
   }  
 
-  process.env[ENV_CURRENT_HEIGHT] = r.height
-  _currentHeight = r.height
+  GlobalHeight.set(height)  
 
-  logger.info(`block: ${JSON.stringify(r)}`)
+  logger.info(`block: ${JSON.stringify({baseTarget, targetDeadline, generationSignature, height})}`)
   
-  const difficulty = BASE_DIFFICULTY / 240 / r.baseTarget
-  const targetDeadline = SETTINGS.deadline ? _.min([r.targetDeadline, SETTINGS.deadline]) : r.targetDeadline
+  const difficulty = BASE_DIFFICULTY / 240 / baseTarget
+  const deadline = SETTINGS.deadline ? _.min([targetDeadline, SETTINGS.deadline]) : targetDeadline
   const maxReader = SETTINGS.max_reader == 0 ? _.min([SETTINGS.plots.length, 3]) : SETTINGS.max_reader  
-  let best = targetDeadline * r.baseTarget
+  let best = targetDeadline * baseTarget
 
-  Communication.submitBlock(_.merge({}, r, {
-    targetDeadline: targetDeadline,
-    difficulty: difficulty,
-    maxReader: maxReader,
-    scoop: addon.getScoop({generationSignature: r.generationSignature, height: r.height}),
-  }))
+  Communication.submitBlock({
+    height,
+    baseTarget,
+    generationSignature,    
+    difficulty,
+    maxReader,
+    targetDeadline: deadline,
+    scoop: addon.getScoop({generationSignature: generationSignature, height: height}),
+  })
   
   await aigle.promisify(async.eachLimit)(files, maxReader, (n, next) => {
-    if (_currentHeight != r.height){
+    if (GlobalHeight.get() != height){
       logger.warn(`found new block. skip this block. name: ${n.fileName}`);
       next()
       return
@@ -129,10 +141,10 @@ async function worker(files){
     logger.info(`scanning ${n.fileName}`)
 
     addon.run({
-      generationSignature: r.generationSignature, 
-      baseTarget: r.baseTarget,
-      height: r.height,
-      targetDeadline: targetDeadline,
+      generationSignature: generationSignature, 
+      baseTarget: baseTarget,
+      height: height,
+      targetDeadline: deadline,
       fullPath: n.fullPath, 
       fileName: n.fileName, 
       isPoc2: n.isPoc2,
@@ -142,14 +154,19 @@ async function worker(files){
 
         next(err)          
         return
-      }      
+      }            
 
       if (rr.nonce == 0){
+        Communication.submitNonce(_.merge({}, rr, {
+          fileName: n.fileName,
+          height: height,
+        }))
+
         next()
         return
       }
 
-      if (r.height < _currentHeight){
+      if (height < GlobalHeight.get()){
         logger.warn(`the block is done. skip this nonce. name: ${n.fileName}`)
         next()
         return
@@ -157,20 +174,20 @@ async function worker(files){
 
       best = rr.best
 
-      logger.info(`found valid nonce: ${JSON.stringify(_.merge({}, rr, {height: r.height}))}`)
-      Pool.submit(rr.nonce, r.height, () => {
+      logger.info(`found valid nonce: ${JSON.stringify(_.merge({}, rr, {height: height}))}`)
+      Pool.submit(rr.nonce, height, () => {
         if (rr.best > best){
           logger.warn(`has best nonce. skip this nonce. name: ${n.fileName}`)
           return false
         }
 
         return true
-      }).then((n) => {
-        if (n){
+      }).then((r) => {
+        if (r){
           Communication.submitNonce(_.merge({}, rr, {
             fileName: n.fileName,
-            height: r.height,
-          }))
+            height: height,
+          })) 
         }
 
         next()
@@ -178,11 +195,11 @@ async function worker(files){
     })
   })
 
-  logger.info(`height: ${r.height}, mining is done.`)
+  logger.info(`height: ${height}, mining is done.`)
 }
 
 require("./config")(async function () {
-  const r = await aigle.resolve(Plots.getAll()).sortBy((n) => -n.fileSize).then((n) => {
+  const files = await aigle.resolve(Plots.getAll()).sortBy((n) => -n.fileSize).then((n) => {
     return n
     // return _.filter(n, m => /_389096_/.test(m.fileName))
     // return _.filter(n, m => (
@@ -197,5 +214,6 @@ require("./config")(async function () {
     // return _.filter(n, m => m.isPoc2)
   })  
 
-  setInterval(() => worker(r),  REFRESH_MINE_INFO_TIME)
+  GlobalHeight.set(0)
+  setInterval(() => worker(files),  REFRESH_MINE_INFO_TIME)
 })

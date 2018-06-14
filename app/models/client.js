@@ -23,7 +23,7 @@ class Client{
         command: 'poolInfo',
         data: Pool.lastBlock,
       }))
-    }        
+    }
   }
 
   sendFreshBlock(){

@@ -10,8 +10,7 @@ class Plots{
   }
   
   static saveStatsData(params){    
-    _.chain(Plots.getAll()).find((n) => n.fileName == params.fileName).thru((file) => {
-
+    _.chain(this.getAll()).find((n) => n.fileName == params.fileName).thru((file) => {      
       file.readedSize = file.readedSize || 0
       file.readedSize += params.readedSize
   

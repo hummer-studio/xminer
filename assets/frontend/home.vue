@@ -80,16 +80,7 @@ export default {
   },
 
   methods: {
-    ...mapActions('Pool', ['connectWS']),
-
-    // haha(message){
-    //   if (message.command == "poolSubscribe"){
-
-    //   }else if (message.command == "poolInfo"){
-    //     message.data.deadline
-    //   }
-    //   console.log(message)
-    // }
+    ...mapActions('Pool', ['connectWS']),    
   },
   mounted () {        
     this.connectWS()
