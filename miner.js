@@ -119,7 +119,7 @@ async function worker(files){
   const difficulty = BASE_DIFFICULTY / 240 / baseTarget
   const deadline = SETTINGS.deadline ? _.min([targetDeadline, SETTINGS.deadline]) : targetDeadline
   const maxReader = SETTINGS.max_reader == 0 ? _.min([SETTINGS.plots.length, 3]) : SETTINGS.max_reader  
-  let best = targetDeadline * baseTarget
+  let bestDeadline = deadline
 
   Communication.submitBlock({
     height,
@@ -172,11 +172,11 @@ async function worker(files){
         return
       }
 
-      best = rr.best
+      bestDeadline = rr.deadline
 
       logger.info(`found valid nonce: ${JSON.stringify(_.merge({}, rr, {height: height}))}`)
       Pool.submit(rr.nonce, height, () => {
-        if (rr.best > best){
+        if (rr.deadline > bestDeadline){
           logger.warn(`has best nonce. skip this nonce. name: ${n.fileName}`)
           return false
         }
