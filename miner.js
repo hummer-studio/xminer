@@ -4,7 +4,7 @@ const dirRecursive = require("recursive-readdir"),
               path = require("path"),
                 fs = require("fs"),
            request = require("request-promise"),
-         { retry } = require("./utilities"),
+{ retry, humanDeadline } = require("./utilities"),
              addon = require("./build/Release/miner");         
 
 
@@ -156,38 +156,40 @@ async function worker(files){
         return
       }            
 
-      if (rr.nonce == 0){
-        Communication.submitNonce(_.merge({}, rr, {
-          fileName: n.fileName,
-          height: height,
-        }))
+      const d = _.merge({}, rr, {
+        fileName: n.fileName,
+        height: height,
+      })
+
+      if (!rr.nonce){
+        Communication.submitNonce(d)
 
         next()
         return
       }
 
       if (height < GlobalHeight.get()){
-        logger.warn(`the block is done. skip this nonce. name: ${n.fileName}`)
+        Communication.submitNonce(_.omit(d, "nonce"))
+
+        logger.warn(`the block is done. skip this nonce. ${JSON.stringify(d)}`)
         next()
         return
-      }
+      }      
 
-      bestDeadline = rr.deadline
-
-      logger.info(`found valid nonce: ${JSON.stringify(_.merge({}, rr, {height: height}))}`)
+      logger.info(`found valid nonce: ${JSON.stringify(d)}`)
       Pool.submit(rr.nonce, height, () => {
         if (rr.deadline > bestDeadline){
-          logger.warn(`has best nonce. skip this nonce. name: ${n.fileName}`)
+          logger.warn(`has best nonce. skip this nonce. ${JSON.stringify(d)}`)
           return false
         }
 
+        bestDeadline = rr.deadline
         return true
       }).then((r) => {
         if (r){
-          Communication.submitNonce(_.merge({}, rr, {
-            fileName: n.fileName,
-            height: height,
-          })) 
+          Communication.submitNonce(d)          
+        }else{
+          Communication.submitNonce(_.omit(d, "nonce"))
         }
 
         next()
@@ -195,7 +197,11 @@ async function worker(files){
     })
   })
 
-  logger.info(`height: ${height}, mining is done.`)
+  if (bestDeadline == deadline){
+    logger.info(`height: ${height}, mining is done. not found best deadline.`)
+  }else{
+    logger.info(`height: ${height}, deadline: ${humanDeadline(bestDeadline)}, mining is done.`)
+  }  
 }
 
 require("./config")(async function () {
