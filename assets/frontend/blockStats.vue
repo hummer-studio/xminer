@@ -85,11 +85,7 @@ export default {
         {
           title: 'deadline',
           key: 'deadline',
-        },
-        {
-          title: 'status',
-          key: 'status',
-        },
+        },        
       ]
     }
   },

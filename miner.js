@@ -100,7 +100,7 @@ async function worker(files){
   if (!r || _currentHeight >= r.height){
     //not found more height.
     return
-  }
+  }  
 
   process.env[ENV_CURRENT_HEIGHT] = r.height
   _currentHeight = r.height
@@ -142,12 +142,7 @@ async function worker(files){
 
         next(err)          
         return
-      }
-
-      Communication.submitNonce(_.merge({}, rr, {
-        fileName: n.fileName,
-        height: r.height,
-      }))
+      }      
 
       if (rr.nonce == 0){
         next()
@@ -170,7 +165,16 @@ async function worker(files){
         }
 
         return true
-      }).then(() => next()).catch(next)                      
+      }).then((n) => {
+        if (n){
+          Communication.submitNonce(_.merge({}, rr, {
+            fileName: n.fileName,
+            height: r.height,
+          }))
+        }
+
+        next()
+      }).catch(next)                      
     })
   })
 
@@ -179,8 +183,13 @@ async function worker(files){
 
 require("./config")(async function () {
   const r = await aigle.resolve(Plots.getAll()).sortBy((n) => -n.fileSize).then((n) => {
-    // return _.filter(n, m => /_389096_/.test(m.fileName))
     return n
+    // return _.filter(n, m => /_389096_/.test(m.fileName))
+    // return _.filter(n, m => (
+    //   /399604754858490715_240000000_409600_409600/.test(m.fileName) ||
+    //   /399604754858490715_780000000_819200_819200/.test(m.fileName) ||
+    //   /399604754858490715_790000000_409600_409600/.test(m.fileName)
+    // ))  
     // return _.filter(n, m => /_800000000_/.test(m.fileName))
     // return _.filter(n, m => /_810000000_40960$/.test(m.fileName))
     // return _.filter(n, m => /_810000000_40960_40960$/.test(m.fileName))
