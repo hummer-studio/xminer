@@ -8,10 +8,10 @@
     "start": "nodemon app.js",
     "console": "node app.js -c",
     "build": "webpack",
-    "build_addon": "node-gyp rebuild --python python2.7",
+    "build-addon": "node-gyp rebuild --python python2.7",
     "dev": "webpack-dev-server --hot --progress --colors --inline --history-api-fallback",
-    "predeploy": "NODE_ENV=production npm run build && NODE_ENV=production npm run build_addon",
-    "deploy": "NODE_ENV=production pm2 start pm2.json --no-daemon"
+    "predeploy": "npm run build",
+    "deploy": "pm2 start pm2.json --no-daemon"
   },
   "author": "this.is.tean@gmail.com",
   "license": "ISC",
