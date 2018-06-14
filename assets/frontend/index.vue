@@ -4,12 +4,14 @@
 import "../styles/global.scss"
 
 import Vue from "vue"
+import VueResource from 'vue-resource'
 import store from './store'
 import VueRouter from "vue-router"
 import iView from 'iview'
 import 'iview/dist/styles/iview.css'
 
 Vue.use(VueRouter)
+Vue.use(VueResource)
 Vue.use(iView)
 
 import Home from "./home"
@@ -21,8 +23,8 @@ const router = new VueRouter({
   ],
 })
 
-router.afterEach((to, from) => {    
-})
+// router.afterEach((to, from) => {    
+// })
 
 new Vue({
   el: '#app',

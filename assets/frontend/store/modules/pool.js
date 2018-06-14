@@ -1,4 +1,5 @@
-import Vue from 'vue'
+'use strict'
+
 import * as types from '../types'
 import { humanDeadline } from "../../../../utilities"
 

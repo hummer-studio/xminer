@@ -10,8 +10,7 @@ class Client{
       command: 'baseInfo',
       data: {
         mined: Block.getAll().length,
-        capacity: Plots.getSize(),
-        files: _.chain(Plots.getAll()).map((n) => _.omit(n, ["fullPath", "isPoc2"])).value(),
+        capacity: Plots.getSize(),        
         bestNonce: Block.getBestNonce(),
         best360Nonce: Block.getLast360RoundNonce(),
       },

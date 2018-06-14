@@ -1,8 +1,9 @@
 'use strict'
 
-import Vue from 'vue'
 import * as types from '../types'
+import * as api from "../api"
 import { humanDeadline, humanSize } from "../../../../utilities"
+
 
 const state = {
   mined: 0,
@@ -34,15 +35,23 @@ const getters = {
 }
 
 const actions = {  
+  async getPlots({commit, dispatch}){
+    const { data } = await api.getPlots()
+
+    commit(types.SET_PLOTS_INFO, { data })  
+  }
 }
 
 const mutations = {
   [types.SET_BASE_INFO] (state, { data }){
     Object.assign(state, {
-      files: [],
       bestNonce: {},
       best360Nonce: {}
     }, data)    
+  },
+
+  [types.SET_PLOTS_INFO] (state, { data }){
+    state.files = data    
   }
 }
 

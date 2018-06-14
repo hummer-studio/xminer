@@ -35,7 +35,7 @@
       <Col span="3">
         <Card class='x-card'>
           <p slot="title" title="Capacity">Capacity</p>
-          <a @click="modalCapacity = true">{{ capacity }}</a>
+          <a @click="toggleCapacity">{{ capacity }}</a>
         </Card>
       </Col>            
     </Row>   
@@ -116,16 +116,22 @@ export default {
   },
 
   methods: {   
+    ...mapActions("Base", ["getPlots"]),
     sizeOrder: function(v1, v2, v3){
       return v3 == "asc" ? (
         humanSize2Bytes(v1) > humanSize2Bytes(v2) ? 1 : -1
       ) : (
         humanSize2Bytes(v1) < humanSize2Bytes(v2) ? 1 : -1
       )                              
+    },
+    toggleCapacity: function(){
+      this.getPlots().then(() => {
+        this.modalCapacity = true
+      }) 
     }
   },
 
-  mounted () {      
+  mounted () {    
   }
 }
 </script>

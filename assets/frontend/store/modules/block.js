@@ -1,6 +1,5 @@
 'use strict'
 
-import Vue from 'vue'
 import * as types from '../types'
 import { humanDeadline } from "../../../../utilities"
 
@@ -16,8 +15,7 @@ const state = {
 
 const getters = {    
   targetDeadline: (state) => state.targetDeadline ? humanDeadline(state.targetDeadline) : "-",
-  difficulty: (state) => state.difficulty ? parseInt(state.difficulty) : "-",
-  scoop: (state) => state.scoop || "-",
+  difficulty: (state) => state.difficulty ? parseInt(state.difficulty) : "-",  
   deadline: (state) => {
     return _.chain(state.nonces)
             .orderBy(["deadline"], ["asc"])
