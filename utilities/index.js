@@ -81,7 +81,7 @@ const humanDeadline = (s) => {
     }  
 
     return `${rr} ${value}${desc}`
-  }, "")
+  }, "").trim()
 }
 
 if (typeof(module)){
