@@ -18,14 +18,14 @@
           <p>{{ mined }}</p>
         </Card>
       </Col>      
-      <Col span="3">
+      <Col span="4">
         <Card class='x-card'>
           <p slot="title" title="Best Deadline">Best Deadline</p>
           <p v-html="bestDeadline"></p>
         </Card>
       </Col>   
 
-      <Col span="3">
+      <Col span="4">
         <Card class='x-card'>
           <p slot="title" title="Best Deadline (360 rounds)">Best Deadline (360 rounds)</p>
           <p v-html="best360Deadline"></p>
