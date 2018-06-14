@@ -354,7 +354,19 @@ public:
 
     auto scoop = Mine::getScoop(signature, sizeof(signature), height);
 
-    return Value(Number::New(info.Env(), scoop));
+    return Number::New(info.Env(), scoop);
+  }
+
+  static Value getInstruction(const CallbackInfo& info) {
+    #ifdef __AVX2__
+      return String::New(info.Env(), "avx2");      
+    #else
+      #ifdef __AVX__
+        return String::New(info.Env(), "avx");
+      #endif
+    #endif
+
+    return String::New(info.Env(), "");
   }
 
 private:
@@ -412,6 +424,8 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
 
   exports["run"] = Function::New(env, MineWorker::run);
   exports["getScoop"] = Function::New(env, MineWorker::getScoop);
+  exports["getInstruction"] = Function::New(env, MineWorker::getInstruction);
+  
   return exports;
 }
 

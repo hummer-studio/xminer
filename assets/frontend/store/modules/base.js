@@ -13,6 +13,11 @@ const state = {
   files: [],
   best360Nonce: null,
   bestNonce: null,
+
+  poolAddress: "",
+  walletAddress: "",
+  targetDeadline: 0,
+  maxReader: 0,
 }
 
 const getters = {    
@@ -32,7 +37,8 @@ const getters = {
     }
 
     return "-"
-  }
+  },
+  targetDeadline: (state) => state.targetDeadline ? humanDeadline(state.targetDeadline) : "-",
 }
 
 const actions = {  

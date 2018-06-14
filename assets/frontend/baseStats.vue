@@ -3,7 +3,13 @@
 
 <template>
   <Content class="layout-content">
-    <h2>Base Info</h2>
+    <div>
+      <h2 style="float: left">Base Info</h2>
+      <a @click="clickInfoModal"><Icon type="ios-information-outline" style="margin: 5px 0 0 5px; font-size: 18px;"></Icon></a>
+      <div style="clear: both"></div>
+    </div>
+    
+
 
     <Row :gutter=10>
       <Col span="3">
@@ -101,14 +107,20 @@ export default {
 
   computed: {
     ...mapState("Base", [
-      "files", "minedBlocks", 
+      "files", 
+      "minedBlocks", 
       "confirmedBlocks",
       "confirmedNonces",
+      "poolAddress",
+      "walletAddress",      
+      "maxReader",
+      "instruction",
     ]),
     ...mapGetters("Base", [      
       "capacity",
       "bestDeadline",
       "best360Deadline",
+      "targetDeadline",
     ]),
 
     plotData: function (){      
@@ -137,7 +149,18 @@ export default {
       this.getPlots().then(() => {
         this.modalCapacity = true
       }) 
-    }
+    },
+    clickInfoModal: function(){
+      this.$Modal.info({
+        content: `
+          Pool Address: ${this.poolAddress}<br>
+          Wallet Address: ${this.walletAddress}<br>
+          Target Deadline: ${this.targetDeadline}<br>
+          Max Reader: ${this.maxReader}<br>
+          CPU Instruction: ${this.instruction}<br>
+        `.trim()
+      });
+    }    
   },
 
   mounted () {    

@@ -1,5 +1,7 @@
 'use strict'
 
+const addon = require("../..//build/Release/miner")
+
 class Client{
   constructor(ws){
     this.ws = ws
@@ -17,6 +19,13 @@ class Client{
         capacity: Plots.getSize(),        
         bestNonce: Block.getBestNonce(),
         best360Nonce: Block.getLast360RoundNonce(),
+
+        poolAddress: SETTINGS.pool_address,
+        walletAddress: SETTINGS.wallet_address,
+        targetDeadline: SETTINGS.deadline,
+        maxReader: SETTINGS.max_reader,
+
+        instruction: addon.getInstruction(),
       },
     }))
   }
