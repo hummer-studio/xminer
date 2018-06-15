@@ -11,6 +11,15 @@ class Plots{
   
   static saveStatsData(params){    
     _.chain(this.getAll()).find((n) => n.fileName == params.fileName).thru((file) => {      
+      if (!file){
+        return
+      }
+
+      if (params.nonce){
+        file.nonceCount = file.nonceCount || 0
+        file.nonceCount++
+      }
+
       file.readedSize = file.readedSize || 0
       file.readedSize += params.readedSize
   

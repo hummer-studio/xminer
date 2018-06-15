@@ -80,6 +80,11 @@ export default {
           sortable: true
         },
         {
+          title: 'confirmed nonce',
+          key: 'nonceCount',
+          sortable: true
+        },
+        {
           title: 'size',
           key: 'size',
           sortable: true,
@@ -100,7 +105,7 @@ export default {
           title: 'calc elapsed',
           key: 'calcElapsed',
           sortable: true
-        }
+        },        
       ]      
     }   
   },
@@ -131,6 +136,7 @@ export default {
           readedSize: humanSize(n.readedSize || 0),
           readElapsed: humanDeadline((n.readElapsed || 0) / 1000),
           calcElapsed: humanDeadline((n.calcElapsed || 0) / 1000),
+          nonceCount: n.nonceCount || 0,
         }
       }).value()
     }

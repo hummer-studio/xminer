@@ -22,7 +22,7 @@ router.post("/block", function* (){
 router.post("/block/mined", function* (){ 
   const { nonce } = this.params
 
-  Plots.saveStatsData(_.pick(this.params, ["fileName", "readedSize", "readElapsed", "calcElapsed"]))  
+  Plots.saveStatsData(_.pick(this.params, ["fileName", "nonce", "readedSize", "readElapsed", "calcElapsed"]))
   if (nonce > 0){  
     
   }
