@@ -57,6 +57,10 @@ class Plots{
                           .then(_.flatten).then(_.uniq)
                           .map((fullPath) => {
                               const fileName = path.parse(fullPath).name
+                              if (fileName.split(".").length >= 2){
+                                return
+                              }
+                              
                               const [accountId, nonceStart, nonceSize, staggerSize] = fileName.split("_")
                           
                               if (accountId == null || nonceStart == null || nonceSize == null){
