@@ -1,6 +1,6 @@
 {
   "name": "xminer",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -13,7 +13,14 @@
     "predeploy": "npm run build",
     "deploy": "pm2 start pm2.json --no-daemon"
   },
-  "author": "this.is.tean@gmail.com",
+  "author": "tean <tean@hummerstudio>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hummer-studio/xminer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/hummer-studio/xminer.git/issues"
+  },
   "license": "ISC",
   "dependencies": {
     "aigle": "^1.12.0",
