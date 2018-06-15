@@ -11,7 +11,7 @@
     "build-addon": "node-gyp rebuild --python python2.7",
     "dev": "webpack-dev-server --hot --progress --colors --inline --history-api-fallback",
     "predeploy": "npm run build",
-    "deploy": "pm2 start pm2.json --no-daemon"
+    "deploy": "pm2 start pm2.json"
   },
   "author": "tean <tean@hummerstudio>",
   "repository": {
