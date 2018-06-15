@@ -3,7 +3,6 @@
 
 #include "miner.h"
 
-
 bool _debug = false;
 
 namespace Mine {
@@ -49,35 +48,34 @@ void mine(CALLBACK_CONTEXT* pData){
   uint32_t scoop = getScoop(signature, sizeof(signature), pData->height);
   pData->result.scoop = scoop;
 
-  auto f = open(pData->path.c_str(), O_RDONLY);  
-  log(printf("open: %s %08X\n", pData->path.c_str(), f));
-  
+  auto f = CFile(pData->path.c_str());  
+  log(printf("open: %s\n", pData->path.c_str()));  
 
   // staggerSize = staggerSize / 8 * 8;
-  size_t bufferSize = std::min<size_t>(MAX_CACHE_SCOOP_SIZE, staggerSize);
+  size_t bufferCount = std::min<size_t>(MAX_CACHE_SCOOP_SIZE, staggerSize);
   // bufferSize = (SCOOP_SIZE * 10 - 1) / SCOOP_SIZE * SCOOP_SIZE + SCOOP_SIZE;
   // bufferSize = (bufferSize - 1) / getpagesize() * getpagesize() + getpagesize();
   
-  char *pBuffer = new char[bufferSize * SCOOP_SIZE];
-  char *pBuffer2 = isPoc2Compat ? new char[bufferSize * SCOOP_SIZE] : NULL;  
+  char *pBuffer = new char[bufferCount * SCOOP_SIZE];
+  char *pBuffer2 = isPoc2Compat ? new char[bufferCount * SCOOP_SIZE] : NULL;  
 
-  log(printf("nonceSize: %llu, BufferSize: %08zX, scoop: %d\n", nonceSize, bufferSize, scoop));
+  log(printf("nonceSize: %llu, bufferCount: %08zX, scoop: %d\n", nonceSize, bufferCount, scoop));
 
   for (uint64_t n = 0; n < nonceSize; n += staggerSize){
     auto start = n * PLOT_SIZE + scoop * staggerSize * SCOOP_SIZE;
     auto MirrorStart = n * PLOT_SIZE + (4095 - scoop) * staggerSize * SCOOP_SIZE; //PoC2 Seek possition
 
-    for (uint64_t i = 0; i < staggerSize; i += bufferSize){
+    for (uint64_t i = 0; i < staggerSize; i += bufferCount){
 
       if (strcmp(currentHeight.c_str(), getenv(ENV_CURRENT_HEIGHT)) != 0){
         break;
       }          
       
-      if (i + bufferSize > staggerSize){
-        bufferSize = staggerSize - i;
+      if (i + bufferCount > staggerSize){
+        bufferCount = staggerSize - i;
       }
 
-      log(printf("loop: %llX, %08zX, %llX\n", i, bufferSize, staggerSize));
+      log(printf("loop: %llX, %08zX, %llX\n", i, bufferCount, staggerSize));
 
       // size_t d1 = (start + i * 64) % getpagesize();
       // size_t d2 = getpagesize() - d1;
@@ -93,30 +91,29 @@ void mine(CALLBACK_CONTEXT* pData){
       // printf("mmap: %08X\n", pBuffer);
 
       log(printf("seek: %llX %llX\n", (uint64_t)start + i * SCOOP_SIZE, (uint64_t)MirrorStart + i * SCOOP_SIZE));
-      lseek(f, start + i * SCOOP_SIZE, SEEK_SET);      
+      if (!f.seek(start + i * SCOOP_SIZE)){
+        break;
+      }       
 
       CTickTime tt;
-    
-      size_t cb = read(f, pBuffer, bufferSize * SCOOP_SIZE);
-      if (cb != bufferSize * SCOOP_SIZE){
-        printf("read error: %08zX %08zX\n", bufferSize * SCOOP_SIZE, cb);
+      
+      if (!f.read(pBuffer, bufferCount * SCOOP_SIZE)){
         break;
-      }
+      }      
 
-      pData->result.readedSize += cb;
+      pData->result.readedSize += bufferCount * SCOOP_SIZE;
+      
 
       if (isPoc2Compat){
-        lseek(f, MirrorStart + i * SCOOP_SIZE, SEEK_SET);
-        cb = read(f, pBuffer2, bufferSize * SCOOP_SIZE);
-        if (cb != bufferSize * SCOOP_SIZE){
-          printf("read error: %08zX %08zX\n", bufferSize * SCOOP_SIZE, cb);
+        f.seek(MirrorStart + i * SCOOP_SIZE);
+        if (!f.read(pBuffer2, bufferCount * SCOOP_SIZE)){
           break;
         }
-
-        pData->result.readedSize += cb;
+        
+        pData->result.readedSize += bufferCount * SCOOP_SIZE;
         pData->result.readElapsed += tt.tick();
 
-        for (size_t t = 0; t < cb; t += SCOOP_SIZE) {
+        for (size_t t = 0; t < bufferCount * SCOOP_SIZE; t += SCOOP_SIZE) {
           memcpy(&pBuffer[t + HASH_SIZE], &pBuffer2[t + HASH_SIZE], HASH_SIZE); //copy second hash to correct place.
         }
       }else{
@@ -126,12 +123,12 @@ void mine(CALLBACK_CONTEXT* pData){
       tt.reInitialize();
 
       #ifdef __AVX2__
-        procscoop_m256_8(signature, n + nonceStart + i, bufferSize, pBuffer, pData);// Process block AVX2
+        procscoop_m256_8(signature, n + nonceStart + i, bufferCount, pBuffer, pData);// Process block AVX2
       #else
         #ifdef __AVX__
-          procscoop_m_4(signature, n + nonceStart + i, bufferSize, pBuffer, pData);// Process block AVX
+          procscoop_m_4(signature, n + nonceStart + i, bufferCount, pBuffer, pData);// Process block AVX
         #else
-          procscoop_sph(signature, n + nonceStart + i, bufferSize, pBuffer, pData);// Process block SSE4
+          procscoop_sph(signature, n + nonceStart + i, bufferCount, pBuffer, pData);// Process block SSE4
         #endif
       #endif
 
@@ -141,10 +138,6 @@ void mine(CALLBACK_CONTEXT* pData){
       //   munmap(pBuffer, bufferSize);
       // }      
     }
-  }
-
-  if (f){
-    close(f);
   }
 
   if (pBuffer){
@@ -380,7 +373,7 @@ protected:
     //   SetError("test error");
     // }
     
-    log(printf("pthread_self: %llX\n", (uint64_t)pthread_self()));    
+    log(printf("pthread_self: %p\n", pthread_self()));    
     
     log(printf("Execute\n"));
     mine(&_context);
@@ -389,10 +382,14 @@ protected:
 
   void OnOK() override {
     // HandleScope scope(_env);
-    log(printf("pthread_self: %llX\n", (uint64_t)pthread_self()));
+    log(printf("pthread_self: %p\n", pthread_self()));
 
     auto result = Object::New(Env());
-    result.Set("nonce", Number::New(Env(), _context.result.nonce));
+    
+    if (_context.result.nonce > 0){
+      result.Set("nonce", std::to_string(_context.result.nonce));
+    }
+    
     result.Set("deadline", Number::New(Env(), _context.result.deadline));
     result.Set("readedSize", Number::New(Env(), _context.result.readedSize));
     result.Set("readElapsed", Number::New(Env(), _context.result.readElapsed));
@@ -415,7 +412,7 @@ protected:
 };
 
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
-  log(printf("pthread_self: %llX\n", (uint64_t)pthread_self()));
+  log(printf("pthread_self: %p\n", pthread_self()));
 
   auto debug = getenv("DEBUG");
   if (debug){

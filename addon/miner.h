@@ -43,6 +43,7 @@
 
 extern bool _debug;
 
+namespace Mine {
 typedef struct {
   // napi_deferred deferred;
 
@@ -92,6 +93,61 @@ public:
     gettimeofday(&t, NULL);
 
     return (t.tv_sec - _tt.tv_sec) * 1000 + (t.tv_usec - _tt.tv_usec) / 1000;
+  }
+};
+
+class CFile{
+private:
+  FILE *_f;
+
+public:
+  CFile(const char *pPath){
+    _f = fopen(pPath, "r");
+    if (!_f){
+      printf("open file %s failed.\n", pPath);
+    }
+  }
+
+  ~CFile(){
+    if (_f){
+      fclose(_f);
+    }
+  }
+
+public:
+  bool seek(uint64_t pos){
+    if (!_f){
+      printf("fseeko failed. invalid handle.\n");
+      return false;
+    }
+
+    auto r = fseeko(_f, pos, SEEK_SET);
+    if (r != 0){
+      printf("fseeko %llX failed. return: %08X\n", pos, r);
+      return false;
+    }
+
+    return true;
+  }
+
+  bool read(char *pBuffer, uint32_t s){  
+    if (!_f){
+      printf("read failed. invalid handle.\n");
+      return false;
+    }
+
+    uint32_t cb = 0;
+    do{
+      auto c = fread(pBuffer + cb, 1, s - cb, _f);
+      if (c <= 0){
+        printf("fread %08X error. return: %08lX\n", s, c);
+        return false;
+      }
+
+      cb += c;
+    }while(cb < s);
+
+    return true;
   }
 };
 
@@ -396,6 +452,7 @@ inline size_t xstr2strr(char *buf, size_t const bufsize, const char *const in) {
 
   buf[inlen / 2] = '\0';
   return inlen / 2 + 1;
+}
 }
 
 #endif
