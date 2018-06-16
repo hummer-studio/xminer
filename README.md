@@ -14,15 +14,14 @@ The xMiner is a client application for mining Burst on a pool.
 ```
 git clone https://github.com/hummer-studio/xminer.git
 cd xminer  
-npm run build-addon
-NODE_ENV=production npm run deploy
+npm i && npm run build-addon
 ```
 
 ## Configure
 Edit the file: `config/config.js`, replace your `pool_address`, `plots` paths and `deadline`
 
 ## Run
-`npm run deploy`
+`NODE_ENV=production npm run deploy`
 
 
 then, visit `http://localhost:3000`
