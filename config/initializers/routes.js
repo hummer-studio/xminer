@@ -10,11 +10,6 @@ app.use(function* (next){
     isProduction: isProduction
   })
 
-  if (this.subdomains.length > 0){
-    this.redirect(`${this.protocol}://${this.hostname.split(".").slice(-2).join(".")}${this.path}`)
-    return
-  }
-
   yield next
 })
 
