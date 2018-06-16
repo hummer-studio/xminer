@@ -373,7 +373,10 @@ protected:
     //   SetError("test error");
     // }
     
-    log(printf("pthread_self: %p\n", pthread_self()));    
+    #ifndef _WIN32
+    log(printf("pthread_self: %p\n", pthread_self()));
+    #endif
+
     
     log(printf("Execute\n"));
     mine(&_context);
@@ -382,7 +385,10 @@ protected:
 
   void OnOK() override {
     // HandleScope scope(_env);
+    #ifndef _WIN32
     log(printf("pthread_self: %p\n", pthread_self()));
+    #endif
+
 
     auto result = Object::New(Env());
     
@@ -412,7 +418,9 @@ protected:
 };
 
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
+  #ifndef _WIN32
   log(printf("pthread_self: %p\n", pthread_self()));
+  #endif
 
   auto debug = getenv("DEBUG");
   if (debug){

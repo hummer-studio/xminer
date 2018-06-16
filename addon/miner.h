@@ -7,13 +7,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <sys/mman.h>
+#ifndef _WIN32
 #include <sys/time.h>
+#endif
 #include <algorithm>
 
 #include <uv.h>
 #include <utility>
-#include <unistd.h>
 
 #include "sph_shabal.h"
 #include "mshabal.h"
@@ -76,23 +76,39 @@ typedef struct {
 
 class CTickTime{
 private:
+#ifndef _WIN32
   timeval _tt;
+#else
+  DWORD _tt;
+#endif
 
 public:
   CTickTime(){
+    #ifndef _WIN32
     gettimeofday(&_tt, NULL);
+    #else
+    _tt = GetTickCount();
+    #endif    
   }
 
 public:
   void reInitialize(){
+    #ifndef _WIN32
     gettimeofday(&_tt, NULL);
+    #else
+    _tt = GetTickCount();
+    #endif
   }
 
   time_t tick(){
+    #ifndef _WIN32
     timeval t;
     gettimeofday(&t, NULL);
 
     return (t.tv_sec - _tt.tv_sec) * 1000 + (t.tv_usec - _tt.tv_usec) / 1000;
+    #else
+    return GetTickCount() - _tt;
+    #endif    
   }
 };
 
@@ -121,7 +137,11 @@ public:
       return false;
     }
 
+#ifndef _WIN32
     auto r = fseeko(_f, pos, SEEK_SET);
+#else
+    auto r = _fseeki64(_f, pos, SEEK_SET);
+#endif
     if (r != 0){
       printf("fseeko %llX failed. return: %08X\n", pos, r);
       return false;
