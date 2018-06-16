@@ -8,8 +8,8 @@
       "env":{
         "NODE_ENV": "production"
       },
-      "out_file": "/dev/null",
-      "error_file": "/dev/null"
+      "out_file": "NULL",
+      "error_file": "NULL"
     },
     {
       "name": "xMiner",
@@ -17,8 +17,8 @@
       "env":{
         "NODE_ENV": "production"
       },      
-      "out_file": "/dev/null",
-      "error_file": "/dev/null"      
+      "out_file": "NULL",
+      "error_file": "NULL"      
     }
   ]
 }
