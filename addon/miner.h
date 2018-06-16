@@ -25,8 +25,6 @@
 #define memcpy_s(x1, x2, x3, x4) memcpy(x1, x3, x4)
 #endif
 
-#define ENV_CURRENT_HEIGHT "currentHeight"
-
 #define HASH_SIZE             32
 #define HASHES_PER_SCOOP      2
 #define SCOOP_SIZE            (HASHES_PER_SCOOP * HASH_SIZE)
@@ -42,6 +40,7 @@
 
 
 extern bool _debug;
+extern uint32_t **_height;
 
 namespace Mine {
 typedef struct {
@@ -160,7 +159,7 @@ public:
     do{
       auto c = fread(pBuffer + cb, 1, s - cb, _f);
       if (c <= 0){
-        printf("fread %08X error. return: %08lX\n", s, c);
+        printf("fread %08X error. return: %08zX\n", s, c);
         return false;
       }
 

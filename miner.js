@@ -86,15 +86,20 @@ class Communication{
 }
 
 class GlobalHeight{  
-  static set(v){
-    process.env[this.k()] = v
+  static set(v){    
+    if (this._h){
+      this._h.writeUInt32LE(v, 0)
+      return
+    }
+
+    this._h = Buffer.alloc(4)
+    this._h.writeUInt32LE(v, 0)
+    addon.setHeightVar(this._h)
   }
 
-  static get(){
-    return parseInt(process.env[this.k()])
+  static get(){    
+    return this._h.readUInt32LE(0);
   }
-
-  static k(){ return "currentHeight" }
 }
 
 async function worker(files){
@@ -218,7 +223,7 @@ require("./config")(async function () {
     // return _.filter(n, m => /_810000000_40960_40960$/.test(m.fileName))
     // return [_.find(n, m => /_4096$/.test(m.fileName))]
     // return _.filter(n, m => m.isPoc2)
-  })  
+  })
 
   GlobalHeight.set(0)
   setInterval(() => worker(files),  REFRESH_MINE_INFO_TIME)

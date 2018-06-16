@@ -4,6 +4,7 @@
 #include "miner.h"
 
 bool _debug = false;
+uint32_t **_height = NULL;
 
 namespace Mine {
 
@@ -35,8 +36,7 @@ void mine(CALLBACK_CONTEXT* pData){
   }else{
     sscanf(pData->name.c_str(), "%llu_%llu_%llu_%llu", &accountId, &nonceStart, &nonceSize, &staggerSize);
   }
-
-  auto currentHeight = std::to_string(pData->height);
+  
   auto isPoc2Compat = pData->isPoc2 != (pData->height >= POC2_START_BLOCK);
   
   log(printf("filename: %s poc2: %X\n", pData->name.c_str(), pData->isPoc2));
@@ -67,9 +67,9 @@ void mine(CALLBACK_CONTEXT* pData){
 
     for (uint64_t i = 0; i < staggerSize; i += bufferCount){
 
-      if (strcmp(currentHeight.c_str(), getenv(ENV_CURRENT_HEIGHT)) != 0){
+      if (pData->height != *(uint32_t*)_height){
         break;
-      }          
+      }            
       
       if (i + bufferCount > staggerSize){
         bufferCount = staggerSize - i;
@@ -362,16 +362,19 @@ public:
     return String::New(info.Env(), "");
   }
 
+  static void setHeightVar(const CallbackInfo& info){    
+    _height = info[0].As<Buffer<uint32_t*>>().Data();    
+
+    log(printf("setHeight: %d\n", *(uint32_t*)_height));
+  }
+
 private:
   MineWorker(Function cb, CALLBACK_CONTEXT &ctx) : AsyncWorker(cb) {
     _context = ctx;
   }  
 
 protected:
-  void Execute() override {
-    // if (!_succeed) {
-    //   SetError("test error");
-    // }
+  void Execute() override {    
     
     #ifndef _WIN32
     log(printf("pthread_self: %p\n", pthread_self()));
@@ -385,18 +388,18 @@ protected:
 
   void OnOK() override {
     // HandleScope scope(_env);
+
     #ifndef _WIN32
     log(printf("pthread_self: %p\n", pthread_self()));
     #endif
-
 
     auto result = Object::New(Env());
     
     if (_context.result.nonce > 0){
       result.Set("nonce", std::to_string(_context.result.nonce));
+      result.Set("deadline", Number::New(Env(), _context.result.deadline));
     }
-    
-    result.Set("deadline", Number::New(Env(), _context.result.deadline));
+        
     result.Set("readedSize", Number::New(Env(), _context.result.readedSize));
     result.Set("readElapsed", Number::New(Env(), _context.result.readElapsed));
     result.Set("calcElapsed", Number::New(Env(), _context.result.calcElapsed));
@@ -430,6 +433,7 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
   exports["run"] = Function::New(env, MineWorker::run);
   exports["getScoop"] = Function::New(env, MineWorker::getScoop);
   exports["getInstruction"] = Function::New(env, MineWorker::getInstruction);
+  exports["setHeightVar"] = Function::New(env, MineWorker::setHeightVar);  
   
   return exports;
 }
