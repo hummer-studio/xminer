@@ -18,7 +18,6 @@
 #include "sph_shabal.h"
 #include "mshabal.h"
 #include "mshabal256.h"
-#include "shabal_asm.h"
 
 
 #ifndef memcpy_s
@@ -288,7 +287,7 @@ inline void procscoop_m256_8(char *signature, unsigned long long const nonce,
   memmove(sig7, signature, 32);
 
   mshabal256_context x, init_x;
-  mshabal256_init(&init_x, 256);
+  mshabal256_init(&init_x);
 
   for (v = 0; v < n; v += 8) {
     memmove(&sig0[32], &cache[(v + 0) * 64], 64);
@@ -307,8 +306,8 @@ inline void procscoop_m256_8(char *signature, unsigned long long const nonce,
                (const unsigned char *)sig4, (const unsigned char *)sig5,
                (const unsigned char *)sig6, (const unsigned char *)sig7,
                64 + 32);
-    mshabal256_close(&x, 0, 0, 0, 0, 0, 0, 0, 0, 0, res0, res1, res2, res3,
-                     res4, res5, res6, res7);
+    mshabal256_close(&x, (uint32_t*)res0, (uint32_t*)res1, (uint32_t*)res2, (uint32_t*)res3,
+                     (uint32_t*)res4, (uint32_t*)res5, (uint32_t*)res6, (uint32_t*)res7);
 
     unsigned long long *wertung = (unsigned long long *)res0;
     unsigned long long *wertung1 = (unsigned long long *)res1;
@@ -389,41 +388,6 @@ inline void procscoop_sph(char *signature, const unsigned long long nonce,
     unsigned long long *wertung = (unsigned long long *)res;
 
     procscoop_callback(context, *wertung, nonce + v);
-    // if ((*wertung / baseTarget) <= bests[acc].targetDeadline) {
-    //   if (bests[acc].nonce == 0 || *wertung < bests[acc].best) {
-    //     // EnterCriticalSection(&bestsLock);
-    //     // bests[acc].best = *wertung;
-    //     // bests[acc].nonce = nonce + v;
-    //     // bests[acc].DL = *wertung / baseTarget;
-    //     // LeaveCriticalSection(&bestsLock);
-    //     // EnterCriticalSection(&sharesLock);
-    //     // shares.push_back({file_name, bests[acc].account_id,
-    //     // bests[acc].best,
-    //     //                   bests[acc].nonce});
-    //     // LeaveCriticalSection(&sharesLock);
-    //   }
-    // }
-  }
-}
-
-inline void procscoop_asm(char *signature, const unsigned long long nonce,
-                          const unsigned long long n, char const *const data, CALLBACK_CONTEXT *context) {
-  char const *cache;
-  char sig[32 + 64];
-  cache = data;
-  char res[32];
-  memcpy_s(sig, sizeof(sig), signature, sizeof(char) * 32);
-  asm_shabal_context x;
-  for (unsigned long long v = 0; v < n; v++) {
-    memcpy_s(&sig[32], sizeof(sig) - 32, &cache[v * 64], sizeof(char) * 64);
-
-    asm_shabal_init(&x, 256);
-    asm_shabal(&x, (const unsigned char *)sig, 64 + 32);
-    asm_shabal_close(&x, 0, 0, res);
-
-    unsigned long long *wertung = (unsigned long long *)res;
-    procscoop_callback(context, *wertung, nonce + v);
-
     // if ((*wertung / baseTarget) <= bests[acc].targetDeadline) {
     //   if (bests[acc].nonce == 0 || *wertung < bests[acc].best) {
     //     // EnterCriticalSection(&bestsLock);
