@@ -2,309 +2,12 @@
 #endif
 
 #include "miner.h"
+#include "plot.h"
 
 bool _debug = false;
 uint32_t **_height = NULL;
 
 namespace Mine {
-
-uint32_t getScoop(const char *signature, size_t size, uint64_t height){    
-  char scoopgen[40];  
-  memmove(scoopgen, signature, size - 1);
-  const char *mov = (char*)&height;
-  for (size_t i = 0; i < sizeof(height); i++){
-    scoopgen[32 + i] = mov[7 - i];
-  }  
-
-  sph_shabal_context x;
-  sph_shabal256_init(&x);
-  sph_shabal256(&x, (const unsigned char*)(const unsigned char*)scoopgen, 40);
-  char xcache[32];
-  sph_shabal256_close(&x, xcache);  
-
-  return (((unsigned char)xcache[31]) + 256 * (unsigned char)xcache[30]) % 4096;
-}
-
-void mine(CALLBACK_CONTEXT* pData){
-  uint64_t accountId;
-  uint64_t nonceStart;
-  uint64_t nonceSize;
-  uint64_t staggerSize;
-  if (pData->isPoc2){
-    sscanf(pData->name.c_str(), "%llu_%llu_%llu", &accountId, &nonceStart, &nonceSize);
-    staggerSize = nonceSize;
-  }else{
-    sscanf(pData->name.c_str(), "%llu_%llu_%llu_%llu", &accountId, &nonceStart, &nonceSize, &staggerSize);
-  }
-  
-  auto isPoc2Compat = pData->isPoc2 != (pData->height >= POC2_START_BLOCK);
-  
-  log(printf("filename: %s poc2: %X\n", pData->name.c_str(), pData->isPoc2));
-  log(printf("generationSignature: %s, height: %llu targetDeadline: %llu\n", pData->generationSignature.c_str(), pData->height, pData->targetDeadline));
-  log(printf("%llu_%llu_%llu_%llu\n", accountId, nonceStart, nonceSize, staggerSize));
-
-  char signature[33] = {};
-  xstr2strr(signature, sizeof(signature), pData->generationSignature.c_str());  
-  uint32_t scoop = getScoop(signature, sizeof(signature), pData->height);
-  pData->result.scoop = scoop;
-
-  auto f = CFile(pData->path.c_str());  
-  log(printf("open: %s\n", pData->path.c_str()));  
-
-  // staggerSize = staggerSize / 8 * 8;
-  size_t bufferCount = std::min<size_t>(MAX_CACHE_SCOOP_SIZE, staggerSize);
-  // bufferSize = (SCOOP_SIZE * 10 - 1) / SCOOP_SIZE * SCOOP_SIZE + SCOOP_SIZE;
-  // bufferSize = (bufferSize - 1) / getpagesize() * getpagesize() + getpagesize();
-  
-  char *pBuffer = new char[bufferCount * SCOOP_SIZE];
-  char *pBuffer2 = isPoc2Compat ? new char[bufferCount * SCOOP_SIZE] : NULL;  
-
-  log(printf("nonceSize: %llu, bufferCount: %08zX, scoop: %d\n", nonceSize, bufferCount, scoop));
-
-  for (uint64_t n = 0; n < nonceSize; n += staggerSize){
-    auto start = n * PLOT_SIZE + scoop * staggerSize * SCOOP_SIZE;
-    auto MirrorStart = n * PLOT_SIZE + (4095 - scoop) * staggerSize * SCOOP_SIZE; //PoC2 Seek possition
-
-    for (uint64_t i = 0; i < staggerSize; i += bufferCount){
-
-      if (pData->height != *(uint32_t*)_height){
-        break;
-      }            
-      
-      if (i + bufferCount > staggerSize){
-        bufferCount = staggerSize - i;
-      }
-
-      log(printf("loop: %llX, %08zX, %llX\n", i, bufferCount, staggerSize));
-
-      // size_t d1 = (start + i * 64) % getpagesize();
-      // size_t d2 = getpagesize() - d1;
-
-      // if (d1 > 0){
-      //   bufferSize += 4096 * 64;
-      // }
-      
-      // pBuffer = (char*)mmap(NULL, bufferSize, PROT_READ, MAP_SHARED, f, start + i * 64 - d1);
-      // if (pBuffer == MAP_FAILED){
-      //   perror("fuick");
-      // }
-      // printf("mmap: %08X\n", pBuffer);
-
-      log(printf("seek: %llX %llX\n", (uint64_t)start + i * SCOOP_SIZE, (uint64_t)MirrorStart + i * SCOOP_SIZE));
-      if (!f.seek(start + i * SCOOP_SIZE)){
-        break;
-      }       
-
-      CTickTime tt;
-      
-      if (!f.read(pBuffer, bufferCount * SCOOP_SIZE)){
-        break;
-      }      
-
-      pData->result.readedSize += bufferCount * SCOOP_SIZE;
-      
-
-      if (isPoc2Compat){
-        f.seek(MirrorStart + i * SCOOP_SIZE);
-        if (!f.read(pBuffer2, bufferCount * SCOOP_SIZE)){
-          break;
-        }
-        
-        pData->result.readedSize += bufferCount * SCOOP_SIZE;
-        pData->result.readElapsed += tt.tick();
-
-        for (size_t t = 0; t < bufferCount * SCOOP_SIZE; t += SCOOP_SIZE) {
-          memcpy(&pBuffer[t + HASH_SIZE], &pBuffer2[t + HASH_SIZE], HASH_SIZE); //copy second hash to correct place.
-        }
-      }else{
-        pData->result.readElapsed += tt.tick();
-      }
-
-      tt.reInitialize();
-
-      #ifdef __AVX2__
-        procscoop_m256_8(signature, n + nonceStart + i, bufferCount, pBuffer, pData);// Process block AVX2
-      #else
-        #ifdef __AVX__
-          procscoop_m_4(signature, n + nonceStart + i, bufferCount, pBuffer, pData);// Process block AVX
-        #else
-          procscoop_sph(signature, n + nonceStart + i, bufferCount, pBuffer, pData);// Process block SSE4
-        #endif
-      #endif
-
-      pData->result.calcElapsed += tt.tick();
-
-      // if (pBuffer){
-      //   munmap(pBuffer, bufferSize);
-      // }      
-    }
-  }
-
-  if (pBuffer){
-    delete[] pBuffer;
-  }
-
-  if (pBuffer2){
-    delete[] pBuffer2;
-  }
-}
-
-
-// napi_status testCallback(napi_env env, arg_example_method *pData){
-//   napi_status status;
-
-//   // napi_handle_scope s1;
-//   // status = napi_open_handle_scope(env, &s1);
-//   // printf("napi_open_handle_scope: %08X\n", status);
-
-//   napi_value global;
-//   napi_get_global(env, &global);
-
-//   napi_value callback;
-//   napi_get_named_property(env, global, "fuckall", &callback);
-//   printf("napi_get_named_property fuckall: %llX\n", callback);
-
-//   napi_value r;  
-//   // status = napi_call_function(env, global, callback, 0, NULL, &r);
-//   // printf("napi_call_function status: %llX\n", status);
-//   status = napi_make_callback(env, pData->ctx, global, callback, 0, NULL, &r);
-
-  
-
-//   // napi_value callback;
-//   // status = napi_get_reference_value(env, pData->callback, &callback);
-//   // printf("napi_get_reference_value: %llX %llX\n", status, callback);
-
-//   // status = napi_call_function(env, pData->jsThis, callback, 0, NULL, NULL);
-//   // printf("status: %llX\n", status);
-  
-  
-//   // napi_value result;
-//   // status = napi_make_callback(env, pData->ctx, pData->jsThis, callback, 0, NULL , &result);
-//   // printf("napi_make_callback: %llX %llX\n", status, result);
-
-//   // napi_value result;
-//   // status = napi_call_function(env, NULL, callback, 0, NULL, &result);
-//   // printf("napi_call_function: %08X\n", status);    
-
-//   const napi_extended_error_info *error = NULL;
-//   napi_get_last_error_info(env, &error);
-//   printf("error: %s\n", error->error_message);
-
-//   return napi_ok;
-// }
-
-// napi_value TestResolveAsync(napi_env env, napi_callback_info info) {
-//   napi_status status;
-  
-//   arg_example_method *pData = new arg_example_method;  
-//   memset(pData, 0, sizeof(arg_example_method));
-
-//   napi_value args[2];
-//   size_t argc = sizeof(args) / sizeof(napi_value);  
-//   status = napi_get_cb_info(env, info, &argc, args, &pData->jsThis, nullptr);
-//   printf("napi_get_cb_info: %llX\n", pData->jsThis);
-  
-  
-//   // status = napi_get_string_from_object(env, args[0], "generationSignature", pData->generationSignature, sizeof(pData->generationSignature));
-//   // status = napi_get_int64_from_object(env, args[0], "baseTarget", (int64_t*)&pData->baseTarget);
-//   // status = napi_get_int64_from_object(env, args[0], "height", (int64_t*)&pData->height);
-//   // status = napi_get_int64_from_object(env, args[0], "targetDeadline", (int64_t*)&pData->targetDeadline);  
-//   // status = napi_get_string_from_object(env, args[0], "fullPath", pData->path, sizeof(pData->path));  
-//   // status = napi_get_string_from_object(env, args[0], "fileName", pData->name, sizeof(pData->name));
-//   // status = napi_get_int64_from_object(env, args[0], "isPoc2", (int64_t*)&pData->isPoc2);
-  
-//   napi_create_reference(env, args[1], 1, &pData->callback);  
-
-//   // const napi_extended_error_info *error = NULL;
-//   // napi_get_last_error_info(env, &error);
-//   // printf("error: %s\n", error->error_message);
-
-//   printf("pthread_self: %llX\n", pthread_self());
-  
-//   napi_value promise;
-//   napi_create_promise(env, &pData->deferred, &promise);
-
-//   napi_value arg1, arg2;
-//   napi_create_object(env, &arg1);
-//   napi_create_object(env, &arg2);
-//   napi_create_async_work(env, arg1, arg2, [](napi_env env, void* data){
-//     // if (1){
-//     //   napi_throw_type_error(env, "123", "haha");
-//     //   return;
-//     // }
-
-//     printf("pthread_self execute: %llX\n", pthread_self());
-//     arg_example_method* pData = (arg_example_method*)data;
-
-//     // testCallback(env, pData);    
-    
-
-//     mine(pData);
-//     printf("execute done.\n");
-  
-//   }, [](napi_env env, napi_status nd_status, void* data){
-//     printf("completed status: %llX\n", nd_status);
-//     printf("pthread_self completed: %llX\n", pthread_self());
-
-//     napi_status status;
-//     arg_example_method *pData = (arg_example_method*)data;              
-
-//     // testCallback(env, pData);    
-    
-//     if (nd_status != napi_ok){
-//       const napi_extended_error_info* err_info_ptr;
-//       status = napi_get_last_error_info(env, &err_info_ptr);
-
-//       napi_value error, error_code, error_msg;
-//       status = napi_create_string_utf8(env, "NAPI_ERROR", NAPI_AUTO_LENGTH, &error_code);
-//       status = napi_create_string_utf8(env, err_info_ptr->error_message, NAPI_AUTO_LENGTH, &error_msg);
-
-//       status = napi_create_error(env, error_code, error_msg, &error);
-//       status = napi_reject_deferred(env, pData->deferred, error);
-//     } else {
-//       napi_value result;      
-//       napi_create_object(env, &result);
-
-//       napi_value resultNonce;
-//       napi_create_int64(env, pData->result.nonce, &resultNonce);
-
-//       napi_value resultDeadline;
-//       napi_create_int64(env, pData->result.deadline, &resultDeadline);
-      
-//       napi_set_named_property(env, result, "nonce", resultNonce);    
-//       napi_set_named_property(env, result, "deadline", resultDeadline);    
-
-//       napi_resolve_deferred(env, pData->deferred, result);
-//     }
-
-//     if (pData){
-//       napi_delete_reference(env, pData->callback);
-//       napi_delete_async_work(env, pData->mainWorker);
-//       delete pData;
-//     }
-
-//     printf("that's all.\n");
-//   }, pData, &pData->mainWorker);
-  
-//   napi_queue_async_work(env, pData->mainWorker);
-  
-//   return promise;
-// }
-
-// napi_value Init(napi_env env, napi_value exports){
-//   napi_status status;
-
-//   napi_property_descriptor desc[] = {
-//     { "test", 0, TestResolveAsync, 0, 0, 0, napi_default, 0 }
-//   };
-
-//   status = napi_define_properties(env, exports, sizeof(desc) / sizeof(*desc), desc);
-
-//   return exports;
-// }
-
-// NAPI_MODULE(hello, Init)
 
 using namespace Napi;
 
@@ -336,7 +39,7 @@ public:
     worker->Queue();
   }
 
-  static Value getScoop(const CallbackInfo& info) {
+  static Value getScoopJs(const CallbackInfo& info) {
     auto params = info[0].As<Object>();
 
     auto generationSignature = params.Get("generationSignature").As<String>().Utf8Value();    
@@ -380,10 +83,129 @@ protected:
     log(printf("pthread_self: %p\n", pthread_self()));
     #endif
 
+    CALLBACK_CONTEXT *pData = &_context;
+
+    uint64_t accountId;
+    uint64_t nonceStart;
+    uint64_t nonceSize;
+    uint64_t staggerSize;
+    if (pData->isPoc2){
+      sscanf(pData->name.c_str(), "%llu_%llu_%llu", &accountId, &nonceStart, &nonceSize);
+      staggerSize = nonceSize;
+    }else{
+      sscanf(pData->name.c_str(), "%llu_%llu_%llu_%llu", &accountId, &nonceStart, &nonceSize, &staggerSize);
+    }
     
-    log(printf("Execute\n"));
-    mine(&_context);
-    log(printf("Execute done\n"));
+    auto isPoc2Compat = pData->isPoc2 != (pData->height >= POC2_START_BLOCK);
+    
+    log(printf("filename: %s poc2: %X\n", pData->name.c_str(), pData->isPoc2));
+    log(printf("generationSignature: %s, height: %llu targetDeadline: %llu\n", pData->generationSignature.c_str(), pData->height, pData->targetDeadline));
+    log(printf("%llu_%llu_%llu_%llu\n", accountId, nonceStart, nonceSize, staggerSize));
+
+    char signature[33] = {};
+    xstr2strr(signature, sizeof(signature), pData->generationSignature.c_str());  
+    uint32_t scoop = getScoop(signature, sizeof(signature), pData->height);
+    pData->result.scoop = scoop;
+
+    auto f = CFile(pData->path.c_str());  
+    log(printf("open: %s\n", pData->path.c_str()));  
+
+    // staggerSize = staggerSize / 8 * 8;
+    size_t bufferCount = std::min<size_t>(MAX_CACHE_SCOOP_SIZE, staggerSize);
+    // bufferSize = (SCOOP_SIZE * 10 - 1) / SCOOP_SIZE * SCOOP_SIZE + SCOOP_SIZE;
+    // bufferSize = (bufferSize - 1) / getpagesize() * getpagesize() + getpagesize();
+    
+    char *pBuffer = new char[bufferCount * SCOOP_SIZE];
+    char *pBuffer2 = isPoc2Compat ? new char[bufferCount * SCOOP_SIZE] : NULL;  
+
+    log(printf("nonceSize: %llu, bufferCount: %08zX, scoop: %d\n", nonceSize, bufferCount, scoop));
+
+    for (uint64_t n = 0; n < nonceSize; n += staggerSize){
+      auto start = n * PLOT_SIZE + scoop * staggerSize * SCOOP_SIZE;
+      auto MirrorStart = n * PLOT_SIZE + (4095 - scoop) * staggerSize * SCOOP_SIZE; //PoC2 Seek possition
+
+      for (uint64_t i = 0; i < staggerSize; i += bufferCount){
+
+        if (pData->height != *(uint32_t*)_height){
+          break;
+        }            
+        
+        if (i + bufferCount > staggerSize){
+          bufferCount = staggerSize - i;
+        }
+
+        log(printf("loop: %llX, %08zX, %llX\n", i, bufferCount, staggerSize));
+
+        // size_t d1 = (start + i * 64) % getpagesize();
+        // size_t d2 = getpagesize() - d1;
+
+        // if (d1 > 0){
+        //   bufferSize += 4096 * 64;
+        // }
+        
+        // pBuffer = (char*)mmap(NULL, bufferSize, PROT_READ, MAP_SHARED, f, start + i * 64 - d1);
+        // if (pBuffer == MAP_FAILED){
+        //   perror("fuick");
+        // }
+        // printf("mmap: %08X\n", pBuffer);
+
+        log(printf("seek: %llX %llX\n", (uint64_t)start + i * SCOOP_SIZE, (uint64_t)MirrorStart + i * SCOOP_SIZE));
+        if (!f.seek(start + i * SCOOP_SIZE)){
+          break;
+        }       
+
+        CTickTime tt;
+        
+        if (!f.read(pBuffer, bufferCount * SCOOP_SIZE)){
+          break;
+        }      
+
+        pData->result.readedSize += bufferCount * SCOOP_SIZE;
+        
+
+        if (isPoc2Compat){
+          f.seek(MirrorStart + i * SCOOP_SIZE);
+          if (!f.read(pBuffer2, bufferCount * SCOOP_SIZE)){
+            break;
+          }
+          
+          pData->result.readedSize += bufferCount * SCOOP_SIZE;
+          pData->result.readElapsed += tt.tick();
+
+          for (size_t t = 0; t < bufferCount * SCOOP_SIZE; t += SCOOP_SIZE) {
+            memcpy(&pBuffer[t + HASH_SIZE], &pBuffer2[t + HASH_SIZE], HASH_SIZE); //copy second hash to correct place.
+          }
+        }else{
+          pData->result.readElapsed += tt.tick();
+        }
+
+        tt.reInitialize();
+
+        #ifdef __AVX2__
+          procscoop_m256_8(signature, n + nonceStart + i, bufferCount, pBuffer, procscoop_callback, pData);// Process block AVX2
+        #else
+          #ifdef __AVX__
+            procscoop_m_4(signature, n + nonceStart + i, bufferCount, pBuffer, procscoop_callback, pData);// Process block AVX
+          #else
+            procscoop_sph(signature, n + nonceStart + i, bufferCount, pBuffer, procscoop_callback, pData);// Process block SSE4
+          #endif
+        #endif
+
+        pData->result.calcElapsed += tt.tick();
+
+        // if (pBuffer){
+        //   munmap(pBuffer, bufferSize);
+        // }      
+      }
+    }
+
+    if (pBuffer){
+      delete[] pBuffer;
+    }
+
+    if (pBuffer2){
+      delete[] pBuffer2;
+    }
   }
 
   void OnOK() override {
@@ -418,6 +240,157 @@ protected:
     //   return nullptr;
     // });  
   }
+
+private:
+  static void procscoop_callback(void *pContext, uint64_t wertung, uint64_t nonce){    
+    CALLBACK_CONTEXT *pData = (CALLBACK_CONTEXT *)pContext;
+
+    if (wertung / pData->baseTarget <= pData->targetDeadline){    
+      log(printf("procscoop_callback: %s %llu %llu %llu %llu %llu\n", pData->name.c_str(), nonce, wertung, wertung / pData->baseTarget, pData->baseTarget, pData->targetDeadline));
+      
+      if (wertung < pData->result.best || pData->result.best == 0){
+        pData->result.best = wertung;
+        pData->result.nonce = nonce;
+        pData->result.deadline = wertung / pData->baseTarget;
+      }
+    } 
+  }
+};
+
+class SmartMineWorker : public AsyncWorker {
+private:
+  PLOT_CONTEXT _context;
+
+private:
+  SmartMineWorker(Function cb, PLOT_CONTEXT &ctx): AsyncWorker(cb){
+    _context = ctx;
+  }
+
+public:
+  static void run(const CallbackInfo& info) {
+    auto params = info[0].As<Object>();         
+
+    PLOT_CONTEXT ctx;
+    ctx.result.nonce = 0;
+    ctx.result.best = 0;
+    ctx.result.deadline = 0;
+
+    // ctx.cache = params.Get("buffer").As<Buffer<char>>().Data();    
+    ctx.generationSignature = params.Get("generationSignature").As<String>().Utf8Value();    
+    ctx.baseTarget = params.Get("baseTarget").As<Number>().Int64Value();
+    ctx.height = params.Get("height").As<Number>().Int64Value();
+    ctx.targetDeadline = params.Get("targetDeadline").As<Number>().Int64Value();    
+
+    ctx.addr = atoll(params.Get("account").As<String>().Utf8Value().c_str());        
+    ctx.startNonce = atoll(params.Get("startNonce").As<String>().Utf8Value().c_str());
+    ctx.nonces = atoll(params.Get("nonces").As<String>().Utf8Value().c_str());
+    ctx.index = params.Get("index").As<Number>().Int32Value();
+    ctx.perNonce = params.Get("perNonce").As<Number>().Int32Value();      
+
+    Function cb = info[1].As<Function>();      
+    
+    SmartMineWorker* worker = new SmartMineWorker(cb, ctx);
+
+    worker->Queue();
+  }
+
+protected:
+  void Execute() override {        
+
+    char signature[33] = {};
+    xstr2strr(signature, sizeof(signature), _context.generationSignature.c_str());  
+    uint32_t scoop = getScoop(signature, sizeof(signature), _context.height);
+
+    //auto start = n * PLOT_SIZE + scoop * staggerSize * SCOOP_SIZE;
+    auto offsetNonce = scoop * _context.nonces * SCOOP_SIZE / PLOT_SIZE;
+
+    uint64_t addr = _context.addr;
+    uint64_t startnonce = _context.startNonce;
+    uint32_t staggersize = _context.perNonce;           
+
+    char *cache = (char*)calloc(NONCE_SIZE, staggersize);    
+
+    uint64_t i = startnonce + offsetNonce + _context.index * _context.perNonce;
+    printf("address: %llu %d %llu %llu %llu %d\n", addr, scoop, startnonce, i, offsetNonce, staggersize);
+
+    int selecttype = 2;
+    uint32_t noncearguments = selecttype == 2 ? 8 : (
+      selecttype == 1 ? 4 : 1
+    );          
+
+    for (uint32_t n = 0; n < staggersize; n += noncearguments) {
+      if (_context.height != *(uint32_t*)_height){
+        break;
+      }
+
+      if (selecttype == 1) { // SSE4
+        mnonce(cache, addr, staggersize,
+                (i + n), (i + n + 1), (i + n + 2), (i + n + 3),
+                (uint64_t)(i - startnonce + n),
+                (uint64_t)(i - startnonce + n + 1),
+                (uint64_t)(i - startnonce + n + 2),
+                (uint64_t)(i - startnonce + n + 3));
+      }
+      else if (selecttype == 2) { // AVX2
+        m256nonce(cache, addr, staggersize,
+                  (i + n + 0), (i + n + 1), (i + n + 2), (i + n + 3),
+                  (i + n + 4), (i + n + 5), (i + n + 6), (i + n + 7),
+                  (i - startnonce + n));
+      }
+      else { // STANDARD
+        nonce(cache, addr, staggersize, (i + n), (uint64_t)(i - startnonce + n));
+      }      
+    }
+
+    // uint64_t accountId = _context.addr;
+    // uint64_t nonceStart = _context.startNonce;
+    // uint64_t nonceSize = _context.nonces;
+    // uint64_t staggerSize = nonceSize;            
+
+    if (_context.height == *(uint32_t*)_height){
+      #ifdef __AVX2__
+        procscoop_m256_8(signature, i, _context.perNonce, cache, procscoop_callback, &_context);
+      #else
+      #endif
+    }    
+
+    if (cache){
+      delete[] cache;
+    }
+  }
+
+  void OnOK() override {
+    auto result = Object::New(Env());
+    
+    if (_context.result.nonce > 0){
+      result.Set("nonce", std::to_string(_context.result.nonce));
+      result.Set("deadline", Number::New(Env(), _context.result.deadline));
+    }
+        
+    // result.Set("readedSize", Number::New(Env(), _context.result.readedSize));
+    // result.Set("readElapsed", Number::New(Env(), _context.result.readElapsed));
+    // result.Set("calcElapsed", Number::New(Env(), _context.result.calcElapsed));
+    // result.Set("scoop", Number::New(Env(), _context.result.scoop));
+    
+    Callback().MakeCallback(Receiver().Value(), std::initializer_list<napi_value>{
+      Boolean::New(Env(), false), result
+    });    
+  }
+
+private:
+  static void procscoop_callback(void *pContext, uint64_t wertung, uint64_t nonce){    
+    PLOT_CONTEXT *pData = (PLOT_CONTEXT *)pContext;    
+
+    if (wertung / pData->baseTarget <= pData->targetDeadline){          
+      log(printf("procscoop_callback: %llu %llu %llu %llu %llu\n", nonce, wertung, wertung / pData->baseTarget, pData->baseTarget, pData->targetDeadline));
+      
+      if (wertung < pData->result.best || pData->result.best == 0){
+        pData->result.best = wertung;
+        pData->result.nonce = nonce;
+        pData->result.deadline = wertung / pData->baseTarget;
+      }
+    } 
+  }
 };
 
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
@@ -431,9 +404,11 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
   }
 
   exports["run"] = Function::New(env, MineWorker::run);
-  exports["getScoop"] = Function::New(env, MineWorker::getScoop);
+  exports["getScoop"] = Function::New(env, MineWorker::getScoopJs);
   exports["getInstruction"] = Function::New(env, MineWorker::getInstruction);
   exports["setHeightVar"] = Function::New(env, MineWorker::setHeightVar);  
+
+  exports["smartMine"] = Function::New(env, SmartMineWorker::run);
   
   return exports;
 }

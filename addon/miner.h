@@ -9,6 +9,7 @@
 #include <time.h>
 #ifndef _WIN32
 #include <sys/time.h>
+#include <unistd.h>
 #endif
 #include <algorithm>
 
@@ -42,6 +43,8 @@ extern bool _debug;
 extern uint32_t **_height;
 
 namespace Mine {
+  typedef void (*procscoop_callback)(void *pData, uint64_t wertung, uint64_t nonce);
+
 typedef struct {
   // napi_deferred deferred;
 
@@ -49,6 +52,7 @@ typedef struct {
   std::string path;
   std::string name;
   std::string generationSignature;
+  
   uint64_t height;
   uint64_t baseTarget;
   uint64_t targetDeadline;
@@ -169,21 +173,25 @@ public:
   }
 };
 
-inline void procscoop_callback(CALLBACK_CONTEXT* pData, uint64_t wertung, uint64_t nonce){    
+inline uint32_t getScoop(const char *signature, size_t size, uint64_t height){    
+  char scoopgen[40];  
+  memmove(scoopgen, signature, size - 1);
+  const char *mov = (char*)&height;
+  for (size_t i = 0; i < sizeof(height); i++){
+    scoopgen[32 + i] = mov[7 - i];
+  }  
 
-  if (wertung / pData->baseTarget <= pData->targetDeadline){    
-    log(printf("procscoop_callback: %s %llu %llu %llu %llu %llu\n", pData->name.c_str(), nonce, wertung, wertung / pData->baseTarget, pData->baseTarget, pData->targetDeadline));
-    
-    if (wertung < pData->result.best || pData->result.best == 0){
-      pData->result.best = wertung;
-      pData->result.nonce = nonce;
-      pData->result.deadline = wertung / pData->baseTarget;
-    }
-  } 
-}
+  sph_shabal_context x;
+  sph_shabal256_init(&x);
+  sph_shabal256(&x, (const unsigned char*)(const unsigned char*)scoopgen, 40);
+  char xcache[32];
+  sph_shabal256_close(&x, xcache);  
+
+  return (((unsigned char)xcache[31]) + 256 * (unsigned char)xcache[30]) % 4096;
+}  
 
 inline void procscoop_m_4(char *signature, unsigned long long const nonce,
-                          unsigned long long const n, char const *const data, CALLBACK_CONTEXT *context) {
+                          unsigned long long const n, char const *const data, procscoop_callback callback, void *context) {
   char const *cache;
   char sig0[32 + 64];
   char sig1[32 + 64];
@@ -235,7 +243,7 @@ inline void procscoop_m_4(char *signature, unsigned long long const nonce,
       posn = 3;
     }
 
-    procscoop_callback(context, *wertung, nonce + v + posn);
+    callback(context, *wertung, nonce + v + posn);
 
     // if ((*wertung / baseTarget) <= bests[acc].targetDeadline) {
     //   if (bests[acc].nonce == 0 || *wertung < bests[acc].best) {
@@ -256,7 +264,7 @@ inline void procscoop_m_4(char *signature, unsigned long long const nonce,
 
 inline void procscoop_m256_8(char *signature, unsigned long long const nonce,
                              unsigned long long const n,
-                             char const *const data, CALLBACK_CONTEXT *context) {
+                             char const *const data, procscoop_callback callback, void *context) {
   char const *cache;
   char sig0[32 + 64];
   char sig1[32 + 64];
@@ -347,7 +355,7 @@ inline void procscoop_m256_8(char *signature, unsigned long long const nonce,
       posn = 7;
     }
 
-    procscoop_callback(context, *wertung, nonce + v + posn);
+    callback(context, *wertung, nonce + v + posn);
 
     // if ((*wertung / baseTarget) <= bests[acc].targetDeadline) {
     //   if (bests[acc].nonce == 0 || *wertung < bests[acc].best) {
@@ -367,7 +375,7 @@ inline void procscoop_m256_8(char *signature, unsigned long long const nonce,
 }
 
 inline void procscoop_sph(char *signature, const unsigned long long nonce,
-                          const unsigned long long n, char const *const data, CALLBACK_CONTEXT *context) {
+                          const unsigned long long n, char const *const data, procscoop_callback callback, void *context) {
   char const *cache;
   char sig[32 + 64];
   cache = data;
@@ -387,7 +395,7 @@ inline void procscoop_sph(char *signature, const unsigned long long nonce,
 
     unsigned long long *wertung = (unsigned long long *)res;
 
-    procscoop_callback(context, *wertung, nonce + v);
+    callback(context, *wertung, nonce + v);
     // if ((*wertung / baseTarget) <= bests[acc].targetDeadline) {
     //   if (bests[acc].nonce == 0 || *wertung < bests[acc].best) {
     //     // EnterCriticalSection(&bestsLock);

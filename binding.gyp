@@ -76,10 +76,14 @@
       "target_name": "plot",
       "sources": [
         "addon/plot.cc",
+        "addon/mshabal_sse4.c",
+        # "addon/shabal_amd64.s"
       ],
       'include_dirs': ["<!@(node -p \"require('node-addon-api').include\")"],
       'dependencies': ["<!(node -p \"require('node-addon-api').gyp\")"],                
       "defines": [],
+      'cflags': ['-m64'],
+      'cflags_cc': ['-m64'],
       "conditions": [
         ["OS=='mac'", {          
           "xcode_settings": {

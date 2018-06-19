@@ -5,8 +5,7 @@ const dirRecursive = require("recursive-readdir"),
                 fs = require("fs"),
            request = require("request-promise"),
 { retry, humanDeadline } = require("./utilities"),
-             addon = require("./build/Release/miner");         
-
+             addon = require("./build/Release/miner");
 
 const HTTP_TIMEOUT = 1000 * 15             
 const REFRESH_MINE_INFO_TIME = 1000 * 3
@@ -209,6 +208,71 @@ async function worker(files){
   }  
 }
 
+async function worker2(){
+  const { baseTarget, targetDeadline, generationSignature, height } = await Pool.getBlock().catch((e) => {
+    if (e.error.code == 'ETIMEDOUT' || e.error.code == 'ESOCKETTIMEDOUT'){
+      logger.warn("get block timeout. try again later.")
+      return {}
+    }
+
+    throw e    
+  })
+
+
+  if (!height || GlobalHeight.get() >= height){
+    //not found more height.
+    return
+  }  
+
+  GlobalHeight.set(height)  
+
+  logger.info(`block: ${JSON.stringify({baseTarget, targetDeadline, generationSignature, height})}`)
+
+  const totalNonce = 409600 || 41943040
+  const perNonce = 1024
+  
+  await aigle.promisify(async.eachLimit)(_.chain().range(totalNonce / perNonce).value(), 10, (n, next) => {
+    addon.smartMine({
+      //account: "236628450097552694",
+      account: "399604754858490715",
+      startNonce: "0",
+      nonces: totalNonce.toString(),
+      index: n,
+      perNonce,
+
+      baseTarget: Number(baseTarget),
+      targetDeadline,
+      generationSignature,
+      height: Number(height),
+    }, (err, result) => {
+      if (err){
+        logger.error(err);
+        next(err)
+        return
+      }
+
+      if (result.nonce){
+        logger.info(result)
+
+        Pool.submit(rr.nonce, height, () => {
+          return true
+        }).then((r) => {
+          logger.info(r)
+        })
+      }
+
+      // var crypto = require('crypto');
+      // var md5 = crypto.createHash('md5');
+  
+      // console.log(new Date());
+  
+      // console.log(md5.update(bb).digest('hex'))
+        
+      next();
+    });    
+  })
+}
+
 require("./config")(async function () {
   const files = await aigle.resolve(Plots.getAll()).sortBy((n) => -n.fileSize).then((n) => {
     return n
@@ -226,5 +290,9 @@ require("./config")(async function () {
   })
 
   GlobalHeight.set(0)
-  setInterval(() => worker(files),  REFRESH_MINE_INFO_TIME)
+  // setInterval(() => worker(files),  REFRESH_MINE_INFO_TIME)    
+
+  // process.env["UV_THREADPOOL_SIZE"] = 12
+  SETTINGS.pool_address = "http://burstneon.com:8080"
+  setInterval(() => worker2(),  REFRESH_MINE_INFO_TIME)    
 })
