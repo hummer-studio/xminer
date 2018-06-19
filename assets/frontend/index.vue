@@ -9,10 +9,11 @@ import store from './store'
 import VueRouter from "vue-router"
 import iView from 'iview'
 import 'iview/dist/styles/iview.css'
+import locale from 'iview/dist/locale/en-US'
 
 Vue.use(VueRouter)
 Vue.use(VueResource)
-Vue.use(iView)
+Vue.use(iView, {locale})
 
 import Home from "./home"
 
