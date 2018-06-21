@@ -105,7 +105,6 @@ protected:
     char signature[33] = {};
     xstr2strr(signature, sizeof(signature), pData->generationSignature.c_str());  
     uint32_t scoop = getScoop(signature, sizeof(signature), pData->height);
-    pData->result.scoop = scoop;
 
     auto f = CFile(pData->path.c_str());  
     log(printf("open: %s\n", pData->path.c_str()));  
@@ -225,7 +224,6 @@ protected:
     result.Set("readedSize", Number::New(Env(), _context.result.readedSize));
     result.Set("readElapsed", Number::New(Env(), _context.result.readElapsed));
     result.Set("calcElapsed", Number::New(Env(), _context.result.calcElapsed));
-    result.Set("scoop", Number::New(Env(), _context.result.scoop));
     
     Callback().MakeCallback(Receiver().Value(), std::initializer_list<napi_value>{
       Boolean::New(Env(), false), result
@@ -283,9 +281,7 @@ public:
 
     ctx.addr = atoll(params.Get("account").As<String>().Utf8Value().c_str());        
     ctx.startNonce = atoll(params.Get("startNonce").As<String>().Utf8Value().c_str());
-    ctx.nonces = atoll(params.Get("nonces").As<String>().Utf8Value().c_str());
-    ctx.index = params.Get("index").As<Number>().Int32Value();
-    ctx.perNonce = params.Get("perNonce").As<Number>().Int32Value();      
+    ctx.nonces = atoll(params.Get("nonces").As<String>().Utf8Value().c_str());    
 
     Function cb = info[1].As<Function>();      
     
@@ -299,63 +295,62 @@ protected:
 
     char signature[33] = {};
     xstr2strr(signature, sizeof(signature), _context.generationSignature.c_str());  
-    uint32_t scoop = getScoop(signature, sizeof(signature), _context.height);
-
-    //auto start = n * PLOT_SIZE + scoop * staggerSize * SCOOP_SIZE;
-    auto offsetNonce = scoop * _context.nonces * SCOOP_SIZE / PLOT_SIZE;
+    uint32_t scoop = getScoop(signature, sizeof(signature), _context.height);    
 
     uint64_t addr = _context.addr;
     uint64_t startnonce = _context.startNonce;
-    uint32_t staggersize = _context.perNonce;           
+    uint64_t staggersize = _context.nonces;       
 
-    char *cache = (char*)calloc(NONCE_SIZE, staggersize);    
+    uint64_t i = startnonce;    
 
-    uint64_t i = startnonce + offsetNonce + _context.index * _context.perNonce;
-    printf("address: %llu %d %llu %llu %llu %d\n", addr, scoop, startnonce, i, offsetNonce, staggersize);
+    #ifdef __AVX2__
+    uint32_t noncearguments = 8;
+    #else
+    uint32_t noncearguments = 4;
+    #endif
 
-    int selecttype = 2;
-    uint32_t noncearguments = selecttype == 2 ? 8 : (
-      selecttype == 1 ? 4 : 1
-    );          
+    //uint32_t noncearguments = 1;  for none
+
+    char *cache1 = (char*)malloc(staggersize * PLOT_SIZE);
+
+    // printf("address: %llu, scoop: %d startnonce: %llu, staggersize: %d, i: %llu, cache1: %p, cache2: %p, noncearguments: %d\n", addr, scoop, startnonce, staggersize, i, cache1, cache2, noncearguments);
 
     for (uint32_t n = 0; n < staggersize; n += noncearguments) {
       if (_context.height != *(uint32_t*)_height){
         break;
       }
 
-      if (selecttype == 1) { // SSE4
-        mnonce(cache, addr, staggersize,
+      #ifdef __AVX2__
+      m256nonce(cache1, addr, staggersize,
+                  (i + n + 0), (i + n + 1), (i + n + 2), (i + n + 3),
+                  (i + n + 4), (i + n + 5), (i + n + 6), (i + n + 7),
+                  (i - startnonce + n));
+      #else
+      mnonce(cache1, addr, staggersize,
                 (i + n), (i + n + 1), (i + n + 2), (i + n + 3),
                 (uint64_t)(i - startnonce + n),
                 (uint64_t)(i - startnonce + n + 1),
                 (uint64_t)(i - startnonce + n + 2),
                 (uint64_t)(i - startnonce + n + 3));
-      }
-      else if (selecttype == 2) { // AVX2
-        m256nonce(cache, addr, staggersize,
-                  (i + n + 0), (i + n + 1), (i + n + 2), (i + n + 3),
-                  (i + n + 4), (i + n + 5), (i + n + 6), (i + n + 7),
-                  (i - startnonce + n));
-      }
-      else { // STANDARD
-        nonce(cache, addr, staggersize, (i + n), (uint64_t)(i - startnonce + n));
-      }      
-    }
-
-    // uint64_t accountId = _context.addr;
-    // uint64_t nonceStart = _context.startNonce;
-    // uint64_t nonceSize = _context.nonces;
-    // uint64_t staggerSize = nonceSize;            
-
-    if (_context.height == *(uint32_t*)_height){
-      #ifdef __AVX2__
-        procscoop_m256_8(signature, i, _context.perNonce, cache, procscoop_callback, &_context);
-      #else
       #endif
-    }    
 
-    if (cache){
-      delete[] cache;
+      //nonce(cache1, addr, staggersize, (i + n), (uint64_t)(i - startnonce + n));  asm
+    }      
+    
+    if (_context.height == *(uint32_t*)_height){      
+      #ifdef __AVX2__
+        procscoop_m256_8(signature, i, staggersize, &cache1[scoop * staggersize * SCOOP_SIZE], procscoop_callback, &_context);
+      #else
+        #ifdef __AVX__
+          procscoop_m_4(signature, i, staggersize, &cache1[scoop * staggersize * SCOOP_SIZE], procscoop_callback, &_context);// Process block AVX
+        #else
+          procscoop_sph(signature, i, staggersize, &cache1[scoop * staggersize * SCOOP_SIZE], procscoop_callback, &_context);
+        #endif
+      #endif
+    }                
+
+    if (cache1){
+      delete[] cache1;
     }
   }
 
@@ -365,12 +360,7 @@ protected:
     if (_context.result.nonce > 0){
       result.Set("nonce", std::to_string(_context.result.nonce));
       result.Set("deadline", Number::New(Env(), _context.result.deadline));
-    }
-        
-    // result.Set("readedSize", Number::New(Env(), _context.result.readedSize));
-    // result.Set("readElapsed", Number::New(Env(), _context.result.readElapsed));
-    // result.Set("calcElapsed", Number::New(Env(), _context.result.calcElapsed));
-    // result.Set("scoop", Number::New(Env(), _context.result.scoop));
+    }        
     
     Callback().MakeCallback(Receiver().Value(), std::initializer_list<napi_value>{
       Boolean::New(Env(), false), result
@@ -380,7 +370,7 @@ protected:
 private:
   static void procscoop_callback(void *pContext, uint64_t wertung, uint64_t nonce){    
     PLOT_CONTEXT *pData = (PLOT_CONTEXT *)pContext;    
-
+      
     if (wertung / pData->baseTarget <= pData->targetDeadline){          
       log(printf("procscoop_callback: %llu %llu %llu %llu %llu\n", nonce, wertung, wertung / pData->baseTarget, pData->baseTarget, pData->targetDeadline));
       

@@ -1,15 +1,17 @@
-{
+{       
   "variables": {
     "avx": "",
     "avx2": "",
-  },
+  },    
 
   "targets": [
-    {
+    {    
       "target_name": "miner",
       "sources": [
         "addon/miner.cc",
         "addon/sph_shabal.c",
+        "addon/mshabal_sse4.c",
+        #  "addon/shabal_amd64.s"
       ],
       'include_dirs': ["<!@(node -p \"require('node-addon-api').include\")"],
       'dependencies': ["<!(node -p \"require('node-addon-api').gyp\")"],                
