@@ -54,7 +54,7 @@
 #    buf   pointer to data (no specific alignment required)
 #    num   number of 64-byte blocks in data (1 or more)
 #
-	.type   shabal_inner, @function
+#	.type   shabal_inner, @function
 shabal_inner:
 	pushq   %rbp
 
@@ -1193,15 +1193,15 @@ Lm0:
 	movq    %rax, %rsp
 	popq    %rbp
 	ret
-	.size   shabal_inner, .-shabal_inner
+#	.size   shabal_inner, .-shabal_inner
 
 # shabal_init(sc, out_size)
 #    sc         pointer to context structure
 #    out_size   hash output size (in bits)
 #
-	.globl  shabal_init
-	.type   shabal_init, @function
-shabal_init:
+	.globl  _shabal_init
+#	.type   shabal_init, @function
+_shabal_init:
 	movl    %esi, %eax
 
 	# Obtain address of 'iv' in a position-independent way.
@@ -1231,11 +1231,11 @@ Li1:
 	stosq
 
 	ret
-	.size   shabal_init, .-shabal_init
+#	.size   shabal_init, .-shabal_init
 
 # Precomputed IV for all 16 supported sizes.
 	.align  8
-	.type   iv, @object
+#	.type   iv, @object
 iv:
 	# output size = 32 bits
 	.long   0x30991624, 0x806813D1, 0xBCA662CB, 0xD12B9E3E
@@ -1445,11 +1445,11 @@ iv:
 	.long   0x7F07D787, 0x5194358F, 0x3C60D665, 0xBE97D79A
 	.long   0x950C3434, 0xAED9A06D, 0x2537DC8D, 0x7CDB5969
 
-	.size   iv, .-iv
+#	.size   iv, .-iv
 
 # reduced_memcpy(): enhanced 'rep movsb' with the same register
 # conventions (but flags are altered).
-	.type   reduced_memcpy, @function
+#	.type   reduced_memcpy, @function
 reduced_memcpy:
 	pushq   %rcx
 	shrq    $3, %rcx
@@ -1458,7 +1458,7 @@ reduced_memcpy:
 	andl    $7, %ecx
 	repnz movsb
 	ret
-	.size   reduced_memcpy, .-reduced_memcpy
+#	.size   reduced_memcpy, .-reduced_memcpy
 
 # Align the context structure.
 # Input:
@@ -1475,7 +1475,7 @@ reduced_memcpy:
 #
 # Registers other than %rdi are preserved.
 #
-	.type   align_structure_enter, @function
+#	.type   align_structure_enter, @function
 align_structure_enter:
 	pushq   %rax
 	leaq    116(%rbp), %rax
@@ -1495,7 +1495,7 @@ Lase1:
 	popq    %rsi
 	popq    %rdi
 	ret
-	.size   align_structure_enter, .-align_structure_enter
+#	.size   align_structure_enter, .-align_structure_enter
 
 # Copy the state back to the context structure, if necessary.
 # Input:
@@ -1506,7 +1506,7 @@ Lase1:
 #
 # All registers are preserved.
 #
-	.type   align_structure_leave, @function
+#	.type   align_structure_leave, @function
 align_structure_leave:
 	pushq   %rdi
 	leaq    72(%rbp), %rdi
@@ -1521,16 +1521,16 @@ align_structure_leave:
 Lasl1:
 	popq    %rdi
 	ret
-	.size   align_structure_leave, .-align_structure_leave
+#	.size   align_structure_leave, .-align_structure_leave
 
 # shabal(sc, data, len)
 #    sc     pointer to context structure
 #    data   input data
 #    len    input data length (in bytes)
 #
-	.globl  shabal
-	.type   shabal, @function
-shabal:
+	.globl  _shabal
+#	.type   shabal, @function
+_shabal:
 	pushq   %rbp
 
 	# Conventions:
@@ -1632,7 +1632,7 @@ Ls9:
 	movq    %rax, %rsp
 	popq    %rbp
 	ret
-	.size   shabal, .-shabal
+#	.size   shabal, .-shabal
 
 # shabal_close(sc, ub, n, dst)
 #    sc    pointer to context structure
@@ -1640,9 +1640,9 @@ Ls9:
 #    n     number of extra bits (0 to 7)
 #    dst   destination buffer for output
 #
-	.globl  shabal_close
-	.type   shabal_close, @function
-shabal_close:
+	.globl  _shabal_close
+#	.type   shabal_close, @function
+_shabal_close:
 	pushq   %rbx
 	pushq   %rbp
 
@@ -1726,4 +1726,4 @@ Lc1:
 	popq    %rbp
 	popq    %rbx
 	ret
-	.size   shabal_close, .-shabal_close
+#	.size   shabal_close, .-shabal_close
