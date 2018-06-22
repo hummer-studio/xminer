@@ -77,12 +77,7 @@ private:
   }  
 
 protected:
-  void Execute() override {    
-    
-    #ifndef _WIN32
-    log(printf("pthread_self: %p\n", pthread_self()));
-    #endif
-
+  void Execute() override {        
     CALLBACK_CONTEXT *pData = &_context;
 
     uint64_t accountId;
@@ -109,7 +104,17 @@ protected:
     auto f = CFile(pData->path.c_str());  
     log(printf("open: %s\n", pData->path.c_str()));  
 
-    // staggerSize = staggerSize / 8 * 8;
+    #ifdef __AVX2__
+    uint32_t noncearguments = 8;
+    #else
+      #ifdef __AVX__
+      uint32_t noncearguments = 4;
+      #else
+      uint32_t noncearguments = 1;
+      #endif
+    #endif
+
+    staggerSize = staggerSize / noncearguments * noncearguments;
     size_t bufferCount = std::min<size_t>(MAX_CACHE_SCOOP_SIZE, staggerSize);
     // bufferSize = (SCOOP_SIZE * 10 - 1) / SCOOP_SIZE * SCOOP_SIZE + SCOOP_SIZE;
     // bufferSize = (bufferSize - 1) / getpagesize() * getpagesize() + getpagesize();
@@ -210,10 +215,6 @@ protected:
   void OnOK() override {
     // HandleScope scope(_env);
 
-    #ifndef _WIN32
-    log(printf("pthread_self: %p\n", pthread_self()));
-    #endif
-
     auto result = Object::New(Env());
     
     if (_context.result.nonce > 0){
@@ -306,10 +307,19 @@ protected:
     #ifdef __AVX2__
     uint32_t noncearguments = 8;
     #else
-    uint32_t noncearguments = 4;
+      #ifdef __AVX__
+      uint32_t noncearguments = 4;
+      #else
+      uint32_t noncearguments = 1;
+      #endif    
     #endif
 
-    //uint32_t noncearguments = 1;  for none
+    //align
+    staggersize = staggersize / noncearguments * noncearguments;
+    if (staggersize == 0){
+      printf("staggersize is zero.\n");
+      return;
+    }
 
     char *cache1 = (char*)malloc(staggersize * PLOT_SIZE);
 
@@ -326,15 +336,17 @@ protected:
                   (i + n + 4), (i + n + 5), (i + n + 6), (i + n + 7),
                   (i - startnonce + n));
       #else
-      mnonce(cache1, addr, staggersize,
-                (i + n), (i + n + 1), (i + n + 2), (i + n + 3),
-                (uint64_t)(i - startnonce + n),
-                (uint64_t)(i - startnonce + n + 1),
-                (uint64_t)(i - startnonce + n + 2),
-                (uint64_t)(i - startnonce + n + 3));
-      #endif
-
-      //nonce(cache1, addr, staggersize, (i + n), (uint64_t)(i - startnonce + n));  asm
+        #ifdef __AVX__      
+        mnonce(cache1, addr, staggersize,
+                  (i + n), (i + n + 1), (i + n + 2), (i + n + 3),
+                  (uint64_t)(i - startnonce + n),
+                  (uint64_t)(i - startnonce + n + 1),
+                  (uint64_t)(i - startnonce + n + 2),
+                  (uint64_t)(i - startnonce + n + 3));
+        #else
+        nonce(cache1, addr, staggersize, (i + n), (uint64_t)(i - startnonce + n)); //asm
+        #endif
+      #endif      
     }      
     
     if (_context.height == *(uint32_t*)_height){      
