@@ -9,6 +9,7 @@
 #include <time.h>
 #ifndef _WIN32
 #include <sys/time.h>
+#include <unistd.h>
 #endif
 #include <algorithm>
 
@@ -18,7 +19,6 @@
 #include "sph_shabal.h"
 #include "mshabal.h"
 #include "mshabal256.h"
-#include "shabal_asm.h"
 
 
 #ifndef memcpy_s
@@ -43,6 +43,8 @@ extern bool _debug;
 extern uint32_t **_height;
 
 namespace Mine {
+  typedef void (*procscoop_callback)(void *pData, uint64_t wertung, uint64_t nonce);
+
 typedef struct {
   // napi_deferred deferred;
 
@@ -50,6 +52,7 @@ typedef struct {
   std::string path;
   std::string name;
   std::string generationSignature;
+  
   uint64_t height;
   uint64_t baseTarget;
   uint64_t targetDeadline;
@@ -60,7 +63,6 @@ typedef struct {
 
   struct {
     uint64_t nonce;
-    uint32_t scoop;
     uint64_t deadline;
     uint64_t best;
 
@@ -170,21 +172,25 @@ public:
   }
 };
 
-inline void procscoop_callback(CALLBACK_CONTEXT* pData, uint64_t wertung, uint64_t nonce){    
+inline uint32_t getScoop(const char *signature, size_t size, uint64_t height){    
+  char scoopgen[40];  
+  memmove(scoopgen, signature, size - 1);
+  const char *mov = (char*)&height;
+  for (size_t i = 0; i < sizeof(height); i++){
+    scoopgen[32 + i] = mov[7 - i];
+  }  
 
-  if (wertung / pData->baseTarget <= pData->targetDeadline){    
-    log(printf("procscoop_callback: %s %llu %llu %llu %llu %llu\n", pData->name.c_str(), nonce, wertung, wertung / pData->baseTarget, pData->baseTarget, pData->targetDeadline));
-    
-    if (wertung < pData->result.best || pData->result.best == 0){
-      pData->result.best = wertung;
-      pData->result.nonce = nonce;
-      pData->result.deadline = wertung / pData->baseTarget;
-    }
-  } 
-}
+  sph_shabal_context x;
+  sph_shabal256_init(&x);
+  sph_shabal256(&x, (const unsigned char*)(const unsigned char*)scoopgen, 40);
+  char xcache[32];
+  sph_shabal256_close(&x, xcache);  
+
+  return (((unsigned char)xcache[31]) + 256 * (unsigned char)xcache[30]) % 4096;
+}  
 
 inline void procscoop_m_4(char *signature, unsigned long long const nonce,
-                          unsigned long long const n, char const *const data, CALLBACK_CONTEXT *context) {
+                          unsigned long long const n, char const *const data, procscoop_callback callback, void *context) {
   char const *cache;
   char sig0[32 + 64];
   char sig1[32 + 64];
@@ -236,7 +242,7 @@ inline void procscoop_m_4(char *signature, unsigned long long const nonce,
       posn = 3;
     }
 
-    procscoop_callback(context, *wertung, nonce + v + posn);
+    callback(context, *wertung, nonce + v + posn);
 
     // if ((*wertung / baseTarget) <= bests[acc].targetDeadline) {
     //   if (bests[acc].nonce == 0 || *wertung < bests[acc].best) {
@@ -257,7 +263,7 @@ inline void procscoop_m_4(char *signature, unsigned long long const nonce,
 
 inline void procscoop_m256_8(char *signature, unsigned long long const nonce,
                              unsigned long long const n,
-                             char const *const data, CALLBACK_CONTEXT *context) {
+                             char const *const data, procscoop_callback callback, void *context) {
   char const *cache;
   char sig0[32 + 64];
   char sig1[32 + 64];
@@ -288,7 +294,7 @@ inline void procscoop_m256_8(char *signature, unsigned long long const nonce,
   memmove(sig7, signature, 32);
 
   mshabal256_context x, init_x;
-  mshabal256_init(&init_x, 256);
+  mshabal256_init(&init_x);
 
   for (v = 0; v < n; v += 8) {
     memmove(&sig0[32], &cache[(v + 0) * 64], 64);
@@ -307,8 +313,8 @@ inline void procscoop_m256_8(char *signature, unsigned long long const nonce,
                (const unsigned char *)sig4, (const unsigned char *)sig5,
                (const unsigned char *)sig6, (const unsigned char *)sig7,
                64 + 32);
-    mshabal256_close(&x, 0, 0, 0, 0, 0, 0, 0, 0, 0, res0, res1, res2, res3,
-                     res4, res5, res6, res7);
+    mshabal256_close(&x, (uint32_t*)res0, (uint32_t*)res1, (uint32_t*)res2, (uint32_t*)res3,
+                     (uint32_t*)res4, (uint32_t*)res5, (uint32_t*)res6, (uint32_t*)res7);
 
     unsigned long long *wertung = (unsigned long long *)res0;
     unsigned long long *wertung1 = (unsigned long long *)res1;
@@ -348,7 +354,7 @@ inline void procscoop_m256_8(char *signature, unsigned long long const nonce,
       posn = 7;
     }
 
-    procscoop_callback(context, *wertung, nonce + v + posn);
+    callback(context, *wertung, nonce + v + posn);
 
     // if ((*wertung / baseTarget) <= bests[acc].targetDeadline) {
     //   if (bests[acc].nonce == 0 || *wertung < bests[acc].best) {
@@ -368,7 +374,7 @@ inline void procscoop_m256_8(char *signature, unsigned long long const nonce,
 }
 
 inline void procscoop_sph(char *signature, const unsigned long long nonce,
-                          const unsigned long long n, char const *const data, CALLBACK_CONTEXT *context) {
+                          const unsigned long long n, char const *const data, procscoop_callback callback, void *context) {
   char const *cache;
   char sig[32 + 64];
   cache = data;
@@ -388,42 +394,7 @@ inline void procscoop_sph(char *signature, const unsigned long long nonce,
 
     unsigned long long *wertung = (unsigned long long *)res;
 
-    procscoop_callback(context, *wertung, nonce + v);
-    // if ((*wertung / baseTarget) <= bests[acc].targetDeadline) {
-    //   if (bests[acc].nonce == 0 || *wertung < bests[acc].best) {
-    //     // EnterCriticalSection(&bestsLock);
-    //     // bests[acc].best = *wertung;
-    //     // bests[acc].nonce = nonce + v;
-    //     // bests[acc].DL = *wertung / baseTarget;
-    //     // LeaveCriticalSection(&bestsLock);
-    //     // EnterCriticalSection(&sharesLock);
-    //     // shares.push_back({file_name, bests[acc].account_id,
-    //     // bests[acc].best,
-    //     //                   bests[acc].nonce});
-    //     // LeaveCriticalSection(&sharesLock);
-    //   }
-    // }
-  }
-}
-
-inline void procscoop_asm(char *signature, const unsigned long long nonce,
-                          const unsigned long long n, char const *const data, CALLBACK_CONTEXT *context) {
-  char const *cache;
-  char sig[32 + 64];
-  cache = data;
-  char res[32];
-  memcpy_s(sig, sizeof(sig), signature, sizeof(char) * 32);
-  asm_shabal_context x;
-  for (unsigned long long v = 0; v < n; v++) {
-    memcpy_s(&sig[32], sizeof(sig) - 32, &cache[v * 64], sizeof(char) * 64);
-
-    asm_shabal_init(&x, 256);
-    asm_shabal(&x, (const unsigned char *)sig, 64 + 32);
-    asm_shabal_close(&x, 0, 0, res);
-
-    unsigned long long *wertung = (unsigned long long *)res;
-    procscoop_callback(context, *wertung, nonce + v);
-
+    callback(context, *wertung, nonce + v);
     // if ((*wertung / baseTarget) <= bests[acc].targetDeadline) {
     //   if (bests[acc].nonce == 0 || *wertung < bests[acc].best) {
     //     // EnterCriticalSection(&bestsLock);

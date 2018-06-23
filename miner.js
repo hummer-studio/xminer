@@ -5,8 +5,7 @@ const dirRecursive = require("recursive-readdir"),
                 fs = require("fs"),
            request = require("request-promise"),
 { retry, humanDeadline } = require("./utilities"),
-             addon = require("./build/Release/miner");         
-
+             addon = require("./build/Release/miner");
 
 const HTTP_TIMEOUT = 1000 * 15             
 const REFRESH_MINE_INFO_TIME = 1000 * 3
@@ -64,6 +63,39 @@ class Pool{
         throw e
       })
     })
+  }  
+}
+
+class Wallet{
+  static getBlockId(height){
+    return request({
+      url: `${SETTINGS.wallet_address}/burst`,
+      qs: {
+        requestType: "getBlockId",
+        height,
+      },
+      json: true
+    })
+  }
+
+  static getBlockchainStatus(){
+    return request({
+      url: `${SETTINGS.wallet_address}/burst`,
+      qs: {
+        requestType: "getBlockchainStatus",
+      },
+      json: true
+    })
+  }
+
+  static send(command, params){
+    return request({
+      url: `${SETTINGS.wallet_address}/burst`,
+      qs: _.merge({}, {
+        requestType: command,
+      }, params),
+      json: true
+    })    
   }
 }
 
@@ -209,7 +241,92 @@ async function worker(files){
   }  
 }
 
-require("./config")(async function () {
+async function worker2(){
+  // SETTINGS.pool_address = "http://burstneon.com:8080"
+
+  const { baseTarget, targetDeadline, generationSignature, height } = await Pool.getBlock().catch((e) => {
+    if (e.error.code == 'ETIMEDOUT' || e.error.code == 'ESOCKETTIMEDOUT'){
+      logger.warn("get block timeout. try again later.")
+      return {}
+    }
+
+    throw e    
+  })
+
+
+  if (!height || GlobalHeight.get() >= height){
+    //not found more height.
+    return
+  }  
+
+  let bestDeadline = targetDeadline
+  GlobalHeight.set(height)  
+
+  logger.info(`block: ${JSON.stringify({baseTarget, targetDeadline, generationSignature, height})}`)
+
+  const startNonce = 290026000
+  const totalNonce = 1024
+  const perNonce = 8
+  
+  await aigle.promisify(async.eachLimit)(_.chain().range(totalNonce / perNonce).shuffle().value(), 10, (n, next) => {
+    addon.smartMine({
+      // account: "236628450097552694",
+      account: "399604754858490715",
+      startNonce: (startNonce + n * perNonce).toString(),
+      nonces: perNonce.toString(),
+
+      baseTarget: Number(baseTarget),
+      targetDeadline,
+      generationSignature,
+      height: Number(height),
+    }, (err, result) => {
+      if (err){
+        logger.error(err);
+        next(err)
+        return
+      }
+
+      if (!result.nonce){
+        next();
+        return
+      }
+
+      logger.info(result)
+
+      Pool.submit(result.nonce, height, () => {
+        if (result.deadline > bestDeadline){
+          return false;
+        }
+
+        bestDeadline = result.deadline
+        return true
+      }).then((r) => {
+        logger.info(r)
+        next();
+      }).catch(next)
+
+      // var crypto = require('crypto');
+      // var md5 = crypto.createHash('md5');
+  
+      // console.log(new Date());
+  
+      // console.log(md5.update(bb).digest('hex'))            
+    });
+  })
+
+  logger.info("done")
+}
+
+require("./config")(async function () {  
+  // await aigle.resolve(Wallet.getBlockchainStatus()).then(({lastBlockchainFeederHeight}) => {    
+  //   return Wallet.send("getBlocks", {lastIndex: 100})
+  //   return _.range(lastBlockchainFeederHeight - 100, lastBlockchainFeederHeight)
+  // }).then(({blocks}) => blocks).map(({height, scoopNum, baseTarget}) => {    
+  //   logger.info(`height: ${height}, scoopNum: ${scoopNum}, difficulty: ${parseInt(BASE_DIFFICULTY / 240 / baseTarget)}`)
+  // })
+
+  // return
+
   const files = await aigle.resolve(Plots.getAll()).sortBy((n) => -n.fileSize).then((n) => {
     return n
     // return _.filter(n, m => /_389096_/.test(m.fileName))
@@ -226,5 +343,8 @@ require("./config")(async function () {
   })
 
   GlobalHeight.set(0)
-  setInterval(() => worker(files),  REFRESH_MINE_INFO_TIME)
+  // setInterval(() => worker(files),  REFRESH_MINE_INFO_TIME)    
+
+  // process.env["UV_THREADPOOL_SIZE"] = 12  
+  setInterval(() => worker2(),  REFRESH_MINE_INFO_TIME)      
 })
