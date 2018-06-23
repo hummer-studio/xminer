@@ -33,8 +33,6 @@ typedef struct{
   uint64_t addr;
   uint64_t startNonce;
   uint64_t nonces;
-  uint32_t index;
-  uint32_t perNonce;
 
   struct {
     uint64_t nonce;
@@ -160,23 +158,25 @@ inline void nonce(char* cache, uint64_t addr, uint64_t staggersize, uint64_t non
   char final[32];
   char gendata[16 + NONCE_SIZE];
   char *xv;
-      
+
   SET_NONCE(gendata, addr,  0);
   SET_NONCE(gendata, nonce, 8);
 
   shabal_context init_x, x;
-  uint32_t len = NONCE_SIZE + 16;
+  uint32_t len;
 
   shabal_init(&init_x, 256);
   for (uint32_t i = NONCE_SIZE; i > 0; i -= HASH_SIZE) {
       memcpy(&x, &init_x, sizeof(init_x));
-      len -= i;
+
+      len = NONCE_SIZE + 16 - i;
       if (len > HASH_CAP)
           len = HASH_CAP;
+
       shabal(&x, &gendata[i], len);
       shabal_close(&x, 0, 0, &gendata[i - HASH_SIZE]);
   }
-      
+
   shabal_init(&x, 256);
   shabal(&x, gendata, 16 + NONCE_SIZE);
   shabal_close(&x, 0, 0, final);
@@ -190,19 +190,15 @@ inline void nonce(char* cache, uint64_t addr, uint64_t staggersize, uint64_t non
       *start ^= fint[1]; start++;
       *start ^= fint[2]; start++;
       *start ^= fint[3]; start++;
-  }	
+  }
 
-  // Sort them:
-  // PoC2
+  // Sort them (PoC2):
   uint64_t revPosition = NONCE_SIZE-SCOOP_SIZE;
   for (uint32_t i = 0; i < NONCE_SIZE; i += SCOOP_SIZE){
       memmove(&cache[cachepos * SCOOP_SIZE + (uint64_t)i * staggersize], &gendata[i], 32);
       memmove(&cache[cachepos * SCOOP_SIZE + 32 + revPosition * staggersize], &gendata[i+32], 32);
       revPosition -= SCOOP_SIZE;
   }
-  // PoC1
-  // for (uint32_t i = 0; i < NONCE_SIZE; i += SCOOP_SIZE)
-  //    memmove(&cache[cachepos * SCOOP_SIZE + (uint64_t)i * staggersize], &gendata[i], SCOOP_SIZE);
 }
 
 inline int mnonce(char* cache, uint64_t addr, uint64_t staggersize,

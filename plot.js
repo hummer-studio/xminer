@@ -1,4 +1,8 @@
 const program = require('commander'),
+            _ = require("lodash"),
+        aigle = require("aigle"),
+        async = require("neo-async"),
+           os = require('os'),
          plot = require("./build/Release/plot");
 
 program
@@ -10,27 +14,60 @@ program
   .parse(process.argv);
 
 
-(async () => {
-
-  const bb = Buffer.alloc((1024 * 256) * (4096));
+(async () => {  
 
   console.log(new Date());
 
-  // /burst?requestType=getMiningInfo
+  
 
-  plot.run({
-    account: program.K || "399604754858490715",
-    startNonce: program.S || "810000000",
-    nonces: program.N || "1024",
-    buffer: bb
-  }, () => {
-    var crypto = require('crypto');
-    var md5 = crypto.createHash('md5');
+  const numScoop = 4096
+  const scoopSize = 64
+  const totalNonce = 1024
+  const staggerNonce = 1024
 
-    console.log(new Date());
+  //n * PLOT_SIZE + scoop * staggerSize * SCOOP_SIZE;
 
-    console.log(md5.update(bb).digest('hex'))
+  //3033 * 1228800 * 64  read 1228800 * 64  
 
-    console.log("cao ni yeye")
-  });  
+  // const l = []
+  // for (let n = 0; n < totalNonce; n += staggerNonce){
+  //   for (let i = 0; i < numScoop; i++){
+  //     l.push({
+  //       nonce: n,
+  //       scoop: i,
+  //       offset: i * totalNonce * scoopSize + n * scoopSize
+  //     })      
+  //   }    
+  // }
+
+  // _.chain(l).orderBy(["offset"]).each((n) => {
+  //   console.log(n)
+  // }).value()
+
+
+  await aigle.promisify(async.eachLimit)(_.chain(_.range(0, 100000000, 1024)).shuffle().value(), 12, (n, next) => {
+    console.log(`start ${n} 1024.`);
+
+    plot.run({
+      account: "399604754858490715",
+      startNonce: n.toString(),
+      nonces: "1024",
+    }, (err, result) => {
+      if (err){
+        console.error(err)
+        next(error)
+        return
+      }
+
+      console.log("done")
+      setTimeout(() => {
+        console.log(require('crypto').createHash("md5").update(result).digest('hex'))          
+        // delete result
+        result = null
+      }, 1000 * 3)
+      
+
+      next()
+    });  
+  })  
 })();
