@@ -79,8 +79,8 @@
       </Col>      
       <Col span="3">
         <Card class="x-card">
-          <p slot="title" title="Pending">Pending</p>
-          <p>{{ pending }} Burst</p>          
+          <p slot="title" title="Pending">Pending Burst</p>
+          <p>{{ pending }}</p>          
         </Card>
       </Col>      
     </Row>
