@@ -126,6 +126,7 @@ if (isProduction){
 
   config.plugins.push(new ExtractTextPlugin("styles/bundle-[chunkhash].css"))
   config.plugins.push(new webpack.optimize.UglifyJsPlugin({
+      sourceMap: true,
       compress: {
         warnings: false,
       },
