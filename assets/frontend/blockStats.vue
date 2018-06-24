@@ -41,7 +41,7 @@
       <Col span="3">
         <Card class='x-card'>
           <p slot="title" title="Difficulty">Difficulty</p>
-          <p>{{ difficulty }}</p>
+          <a @click="toggleDifficulty">{{ difficulty }}</a>
         </Card>
       </Col>   
 
@@ -55,22 +55,49 @@
     <Modal
       v-model="modalNonces"
       :width="tableWidth + 30"
-    >
-      <div slot="footer"></div>
+      class="modal-hidden-footer"  
+    >      
       <Table border :columns="nonceInfoColumn" :data="noncesData" height="500" :width="tableWidth"></Table>
+    </Modal>
+
+    <Modal
+      :width="1024"
+      v-model="modalScoop"    
+      class="modal-hidden-footer"  
+    >
+      <Spin fix :hidden="!blocksLoading"></Spin>
+      <vue-highcharts :options="chartOptionsScoop"></vue-highcharts>    
+    </Modal>
+
+    <Modal
+      :width="1024"
+      v-model="modalDifflculty"    
+      class="modal-hidden-footer"  
+    >
+      <Spin fix :hidden="!blocksLoading"></Spin>
+      <vue-highcharts :options="chartOptionsDifflculty"></vue-highcharts>    
     </Modal>
   </Content>  
 </template>
 
 <script>
+import VueHighcharts from 'vue2-highcharts'
 import { mapState, mapGetters, mapActions } from 'vuex'
-import { humanDeadline } from "../../utilities"
+import { humanDeadline, convertTimestamp } from "../../utilities"
+import { getDifficulty } from "../../mine/utilities"
+import moment from "moment"
 
 export default {
+  components: {
+    VueHighcharts
+  },
+
   data () {      
     return  {
       tableWidth: 1024,
       modalNonces: false,
+      modalScoop: false,
+      modalDifflculty: false,
 
       nonceInfoColumn: [
         {
@@ -86,12 +113,12 @@ export default {
           title: 'deadline',
           key: 'deadline',
         },        
-      ]
+      ],
     }
   },
 
   computed: {
-    ...mapState("Block", ["height", "nonces", "baseTarget", "scoop", "progress"]),
+    ...mapState("Block", ["height", "nonces", "baseTarget", "scoop", "progress", "blocksLoading", "his"]),
     ...mapGetters("Block", {
       targetDeadline: "targetDeadline",
       difficulty: "difficulty",
@@ -106,10 +133,159 @@ export default {
           deadline: humanDeadline(n.deadline)
         }
       }).value()
+    },
+    
+    chartOptionsScoop: function(){          
+      return {
+        chart: {
+          type: 'column'
+        },
+        title: {
+          text: ' '
+        },
+        // subtitle: {
+        //   text: 'Source: WorldClimate.com'
+        // },
+        xAxis: {
+          // categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+          //   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+          // labels: {
+          //   formatter: function(){
+          //     return convertTimestamp(this.value)
+          //   }
+          // }
+        },
+        yAxis: {
+          title: {
+            text: 'scoop'
+          },
+          // labels: {
+          //   formatter: function () {
+          //     return humanDeadline(this.value)
+          //   }
+          // }
+        },
+        credits: {
+          enabled: false
+        },
+        plotOptions: {
+          spline: {
+            // dataLabels: {
+            //   enabled: true
+            // },
+
+            // marker: {
+            //   radius: 4,
+            //   lineColor: '#666666',
+            //   lineWidth: 1
+            // }
+          }
+        },
+        series: [{
+          name: "count", 
+          data: _.chain(this.his).groupBy("scoopNum").map((v, k) => {
+            return {
+              x: Number(k),
+              y: v.length,
+            }
+          }).compact().value(),
+        }],
+
+        tooltip: {
+          // formatter: function (n){
+          //   return convertTimestamp(this.x)
+          // }
+        }
+      }
+    },
+
+    chartOptionsDifflculty: function(){
+      return {
+        chart: {
+          type: 'spline'
+        },
+        title: {
+          text: ' '
+        },
+        // subtitle: {
+        //   text: 'Source: WorldClimate.com'
+        // },
+        xAxis: {
+          // categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+          //   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+          // labels: {
+          //   formatter: function(){
+          //     return moment(this.value).format()
+          //     return convertTimestamp(this.value)
+          //   }
+          // }
+        },
+        yAxis: {
+          title: {
+            text: 'difficulty'
+          },
+          // labels: {
+          //   formatter: function () {
+          //     return humanDeadline(this.value)
+          //   }
+          // }
+        },
+        credits: {
+          enabled: false
+        },
+        plotOptions: {
+          series:{
+            turboThreshold: 0,
+          },
+          spline: {
+            turboThreshold: 0,
+            
+            // dataLabels: {
+            //   enabled: true
+            // },
+
+            // marker: {
+            //   radius: 4,
+            //   lineColor: '#666666',
+            //   lineWidth: 1
+            // }
+          }
+        },
+        series: [{
+          name: "difficulty", 
+          data: _.chain(this.his).slice(-360).orderBy(["timestamp"]).map((n) => {
+            if (!n.timestamp){
+              return
+            }
+
+            return {
+              x: n.timestamp,
+              y: getDifficulty(n.baseTarget),
+            }
+          }).compact().value(),
+        }],
+
+        tooltip: {
+          formatter: function (n){
+            return `${convertTimestamp(this.x).format()}<br>${this.y}`
+          }
+        }
+      }
     }
   },
 
   methods: {      
+    ...mapActions("Block", ["getBlocks"]),
+    toggleScoop: function(){
+      this.modalScoop = true
+
+      this.getBlocks()
+    },
+    toggleDifficulty: function(){
+      this.modalDifflculty = true
+
+      this.getBlocks()
+    }
   },
 
   mounted () {    

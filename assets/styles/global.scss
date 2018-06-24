@@ -23,3 +23,8 @@ body, html{
     padding: 10px 16px;
   }
 }
+.modal-hidden-footer{
+  .ivu-modal-footer{
+    display: none;
+  } 
+}

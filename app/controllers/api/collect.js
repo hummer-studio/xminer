@@ -3,16 +3,15 @@
 const router = require('koa-router')()
 
 router.post("/block", function* (){   
-
-  if (Block.save(_.pick(this.params, [
-    "baseTarget", 
-    "generationSignature", 
-    "height", 
-    "targetDeadline",    
-    "difficulty",
-    "maxReader",
-    "scoop",
-  ]))){
+  if (Block.save(
+    _.merge({mined: true}, _.pick(this.params, [
+      "baseTarget", 
+      "generationSignature", 
+      "height", 
+      "targetDeadline",
+      "scoop",
+    ]))
+  )){
     Client.boardcastBlock()    
   }  
 

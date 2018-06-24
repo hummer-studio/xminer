@@ -4,13 +4,12 @@ const dirRecursive = require("recursive-readdir"),
               path = require("path"),
                 fs = require("fs"),
            request = require("request-promise"),
-{ retry, humanDeadline } = require("./utilities"),
-             addon = require("./build/Release/miner");
+{ retry, humanDeadline } = require("../utilities"), 
+             addon = require("../build/Release/miner");
 
 const HTTP_TIMEOUT = 1000 * 15             
 const REFRESH_MINE_INFO_TIME = 1000 * 3
 const MAX_RETRY_TIMES = 10
-const BASE_DIFFICULTY = 4398046511104
 const BACKEND_URL = "http://localhost"
 
 class Pool{
@@ -66,39 +65,6 @@ class Pool{
   }  
 }
 
-class Wallet{
-  static getBlockId(height){
-    return request({
-      url: `${SETTINGS.wallet_address}/burst`,
-      qs: {
-        requestType: "getBlockId",
-        height,
-      },
-      json: true
-    })
-  }
-
-  static getBlockchainStatus(){
-    return request({
-      url: `${SETTINGS.wallet_address}/burst`,
-      qs: {
-        requestType: "getBlockchainStatus",
-      },
-      json: true
-    })
-  }
-
-  static send(command, params){
-    return request({
-      url: `${SETTINGS.wallet_address}/burst`,
-      qs: _.merge({}, {
-        requestType: command,
-      }, params),
-      json: true
-    })    
-  }
-}
-
 class Communication{
   static submitBlock(params){
     return request({
@@ -152,8 +118,7 @@ async function worker(files){
   GlobalHeight.set(height)  
 
   logger.info(`block: ${JSON.stringify({baseTarget, targetDeadline, generationSignature, height})}`)
-  
-  const difficulty = BASE_DIFFICULTY / 240 / baseTarget
+    
   const deadline = SETTINGS.deadline ? _.min([targetDeadline, SETTINGS.deadline]) : targetDeadline
   const maxReader = SETTINGS.max_reader == 0 ? _.min([SETTINGS.plots.length, 3]) : SETTINGS.max_reader  
   let bestDeadline = deadline
@@ -162,7 +127,6 @@ async function worker(files){
     height,
     baseTarget,
     generationSignature,    
-    difficulty,
     maxReader,
     targetDeadline: deadline,
     scoop: addon.getScoop({generationSignature: generationSignature, height: height}),
@@ -317,19 +281,10 @@ async function worker2(){
   logger.info("done")
 }
 
-require("./config")(async function () {  
-  // await aigle.resolve(Wallet.getBlockchainStatus()).then(({lastBlockchainFeederHeight}) => {    
-  //   return Wallet.send("getBlocks", {lastIndex: 100})
-  //   return _.range(lastBlockchainFeederHeight - 100, lastBlockchainFeederHeight)
-  // }).then(({blocks}) => blocks).map(({height, scoopNum, baseTarget}) => {    
-  //   logger.info(`height: ${height}, scoopNum: ${scoopNum}, difficulty: ${parseInt(BASE_DIFFICULTY / 240 / baseTarget)}`)
-  // })
-
-  // return
-
+require("../config")(async function () {    
   const files = await aigle.resolve(Plots.getAll()).sortBy((n) => -n.fileSize).then((n) => {
     return n
-    // return _.filter(n, m => /_389096_/.test(m.fileName))
+    // return _.filter(n, m => /399604754858490715_380000000_409600/.test(m.fileName))
     // return _.filter(n, m => (
     //   /399604754858490715_240000000_409600_409600/.test(m.fileName) ||
     //   /399604754858490715_780000000_819200_819200/.test(m.fileName) ||
@@ -343,8 +298,8 @@ require("./config")(async function () {
   })
 
   GlobalHeight.set(0)
-  // setInterval(() => worker(files),  REFRESH_MINE_INFO_TIME)    
+  setInterval(() => worker(files),  REFRESH_MINE_INFO_TIME)    
 
   // process.env["UV_THREADPOOL_SIZE"] = 12  
-  setInterval(() => worker2(),  REFRESH_MINE_INFO_TIME)      
+  // setInterval(() => worker2(),  REFRESH_MINE_INFO_TIME)      
 })
