@@ -1,6 +1,7 @@
 'use strict'
 
-const _ = require("lodash")
+const _ = require("lodash"),
+ moment = require("moment");
 
 const retry = (times = 10, interval = 1000, func) => {
   return aigle.promisify(async.retry)({
@@ -84,10 +85,14 @@ const humanDeadline = (s) => {
   }, "").trim()
 }
 
+const convertTimestamp = (v) => {
+  return moment(1407722400000 + v * 1000)
+}
+
 if (typeof(module)){
   module.exports = {
-    retry, humanSize, humanDeadline, humanSize2Bytes
+    retry, humanSize, humanDeadline, humanSize2Bytes, convertTimestamp
   }
 }else{
-  eval(`export { retry, humanSize, humanDeadline, humanSize2Bytes }`)
+  eval(`export { retry, humanSize, humanDeadline, humanSize2Bytes, convertTimestamp }`)
 }

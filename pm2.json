@@ -13,7 +13,7 @@
     },
     {
       "name": "xMiner",
-      "script": "miner.js",            
+      "script": "./mine/miner.js",            
       "env":{
         "NODE_ENV": "production"
       },      

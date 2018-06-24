@@ -1,11 +1,16 @@
 'use strict'
 
+     const Wallet = require("../../mine/wallet"),
+{ getDifficulty } = require("../../mine/utilities")
+
 class Block{
   constructor(params){
     this.readedSize = 0
-    this.nonces = []    
-
-    _.merge(this, params)
+    this.nonces = []   
+     
+    _.merge(this, params, {     
+      difficulty: getDifficulty(params.baseTarget)
+    })
   }
 
   getMinedProgress(){  
@@ -13,7 +18,7 @@ class Block{
   }
 
   getBestNonce(){
-    return _.chain(this.nonces).orderBy(["deadline"], ["asc"]).first().value()
+    return _.chain(this.nonces).orderBy(["deadline"]).first().value()
   }
 
   static getConfirmedBlocks(){
@@ -29,7 +34,7 @@ class Block{
             .slice(-360)
             .map((n) => n.getBestNonce())
             .compact()
-            .orderBy(["deadline"], ["asc"])
+            .orderBy(["deadline"])
             .first().value()
   }
 
@@ -63,8 +68,10 @@ class Block{
          return
        }
 
+       this.fillTimestamp()
+
        const b = new Block(params)
-       this.all.push(b)
+       this.all.push(b)       
 
        return b
      }).value()
@@ -78,10 +85,35 @@ class Block{
     return this.all
   }
 
+  static getMinedAll(){
+    return _.filter(this.all, (n) => n.mined)
+  }
+
+  static fillTimestamp(){
+    _.chain(this.getAll()).reject((n) => n.timestamp).orderBy("height").forEach((m) => {
+      Wallet.send("getBlock", {height: m.height}).then(({timestamp}) => {
+        m.timestamp = timestamp
+      })
+    }).value()
+  }
+
   static async initialize(){
     this.all = []
 
     this.best = null
+
+
+    await aigle.resolve(_.range(0, 360, 100)).map((n) => {      
+      return Wallet.send("getBlocks", {firstIndex: n})
+    }).map(({blocks}) => blocks).then(_.flatten).filter((n) => {
+      return n.height      
+    }).map((r) => {    
+      return _.merge({mined: false}, 
+        _.pick(r, ['height', 'scoopNum', 'timestamp', 'baseTarget'])
+      )      
+    }).then((n) => _.orderBy(n, ["timestamp"])).forEach((n) => {
+      Block.save(n)
+    })
   }  
 }
 

@@ -1,5 +1,6 @@
 'use strict'
 
+import * as api from "../api"
 import * as types from '../types'
 import { humanDeadline } from "../../../../utilities"
 
@@ -11,6 +12,9 @@ const state = {
   scoop: 0,  
   nonces: [],
   progress: 0,
+
+  blocksLoading: false,
+  his: []
 }
 
 const getters = {    
@@ -31,7 +35,15 @@ const getters = {
   }
 }
 
-const actions = {  
+const actions = {
+  async getBlocks({commit, dispatch}){
+    commit(types.SET_BLOCK_LOADING, true)  
+
+    const r = await api.getBlocks()
+
+    commit(types.SET_BLOCK_LOADING, false)  
+    commit(types.SET_BLOCK_HISTORY, r)  
+  }  
 }
 
 const mutations = {
@@ -39,6 +51,14 @@ const mutations = {
     Object.assign(state, {
       nonces: [],
     }, data)
+  },
+  
+  [types.SET_BLOCK_LOADING] (state, r){
+    state.blocksLoading = r
+  },
+
+  [types.SET_BLOCK_HISTORY] (state, r){
+    state.his = r.data
   }
 }
 

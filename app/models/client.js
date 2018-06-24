@@ -13,7 +13,7 @@ class Client{
     return this.ws.send(JSON.stringify({
       command: 'baseInfo',
       data: {
-        minedBlocks: Block.getAll().length,
+        minedBlocks: Block.getMinedAll().length,
         confirmedBlocks: confirmedBlocks.length,
         confirmedNonces: _.chain(confirmedBlocks).map((n) => n.nonces.length).sum().value(),
         capacity: Plots.getSize(),        
