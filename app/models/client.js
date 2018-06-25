@@ -58,30 +58,28 @@ class Client{
     }))
   }
 
-  static boardcastPoolSubscribe(data){
-    return aigle.map(this.clients, (n) => n.sendPoolSubscribe(data))
+  sendPoolMinerCount(data){
+    this.ws.send(JSON.stringify({
+      command: 'poolMiner',
+      data,
+    }))
   }
 
-  static boardcastPoolInfo(){
-    return aigle.map(this.clients, (n) => n.sendPoolLastBlock())
-  }
-
-  static boardcastBaseInfo(){
-    return aigle.map(this.clients, (n) => n.sendBaseInfo())
-  }
-
-  static boardcastBlock(){    
-    return aigle.map(this.clients, (n) => n.sendFreshBlock())
-  }
-
-  static boardcast(v){
-    return aigle.map(this.clients, (n) => n.ws.send(JSON.stringify(v)))    
+  static async boardcast(callback){
+    await this.getAll().forEach(async (n) => {
+      callback(new Client(n))
+    })
   }
 
   static save(ws){
     ws.on("close", () => {
       logger.warn(`client closed.`)
-      Client.remove(ws)
+
+      // this.remove(ws)
+
+      if (this.getAll().size == 0){
+        Pool.disconnect()
+      }
     })
 
     const client = new Client(ws)
@@ -90,27 +88,31 @@ class Client{
     client.sendPoolLastBlock()
     client.sendBaseInfo()    
 
-    this.clients.push(client)
-
-    if (this.clients.length == 1){
+    if (this.getAll().size == 1){
       Pool.connect()
     }
   }
 
-  static remove(ws){
-    this.clients = _.filter(this.clients, (n) => n.ws != ws)
+  // static remove(ws){
+  //   // this.clients = _.filter(this.clients, (n) => n.ws != ws)
 
-    if (this.clients.length == 0){
-      Pool.disconnect()
-    }
-  }
+  //   if (this.clients.length == 0){
+  //     Pool.disconnect()
+  //   }
+  // }
 
   static getAll(){
-    return this.clients
+    return app.ws.server.clients
+
+    //todo: improve
+
+    const clients = []
+    app.ws.server.clients.forEach((n) => clients.push(n))
+
+    return clients
   }
 
   static async initialize(){
-    this.clients = []
   }
 }
 

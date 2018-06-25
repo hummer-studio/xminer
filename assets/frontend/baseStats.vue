@@ -76,7 +76,7 @@ export default {
         {
           title: 'name',
           key: 'name',
-          width: 500,
+          width: 450,
           sortable: true
         },
         {

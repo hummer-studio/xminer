@@ -16,6 +16,9 @@ const state = {
   lastActiveBlockHeight: 0,
   nConf: 0,
   pending: 0,
+
+  effectivePoolCapacity: 0,
+  minerCount: 0,
 }
 
 const getters = {
@@ -28,6 +31,7 @@ const getters = {
 
   miner: (state) => state.miner || "-",  
   effectiveCapacity: (state) => state.effectiveCapacity.toFixed(4),
+  effectivePoolCapacity: (state) => state.effectivePoolCapacity.toFixed(4),
   historicalShare: (state) => (state.historicalShare * 100).toFixed(4),  
   pending: (state) => state.pending / 100000000,
 }
@@ -52,6 +56,9 @@ const actions = {
           break
         case "poolSubscribe":
           commit(types.SET_ACCOUNT_INFO, {data: d.data})
+          break
+        case "poolMiner":
+          commit(types.SET_POOL_MINER_COUNT, {data: d.data})
           break
       }      
     }
@@ -78,6 +85,10 @@ const mutations = {
   [types.SET_ACCOUNT_INFO] (state, { data }){
     Object.assign(state, _.omit(data, "deadline"))
     state.currentDeadline = data.deadline
+  },
+
+  [types.SET_POOL_MINER_COUNT] (state, { data }){
+    Object.assign(state, _.pick(data, ["effectivePoolCapacity", "minerCount"]))    
   }
 }
 

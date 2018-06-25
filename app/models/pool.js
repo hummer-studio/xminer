@@ -24,8 +24,9 @@ class Pool{
   }
 
   static disconnect(){
+    logger.info(`pool disconnect`);      
+
     this.autoReconnect = false
-    this.clear()
 
     if (this.instance){
       this.instance.ws.terminate();
@@ -41,7 +42,7 @@ class Pool{
     const client = new WebSocketClient(`${u.protocol == "https:" ? "wss" : "ws"}://${u.host}/ws`);
   
     client.on('open', () => {
-      logger.info(`ws connected`);      
+      logger.info(`pool connected`);      
 
       this.instance = new Pool(client)
 
@@ -55,11 +56,11 @@ class Pool{
     });
 
     client.on('error', (err) => {
-      logger.error(`pool ws error.`)
+      logger.error(`pool error.`)
     })
 
     client.on('close', () => {
-      logger.warn(`pool ws closed`)
+      logger.warn(`pool closed`)
 
       this.clear()
     })
@@ -68,12 +69,14 @@ class Pool{
       const data = JSON.parse(message)
 
       if (data.generationSignature){
-        this.lastBlock = data
+        this.lastBlock = data        
         
-        Client.boardcastPoolInfo()
+        Client.boardcast((n) => n.sendPoolLastBlock())
       }else if (data.address){
-        Client.boardcastPoolSubscribe(data)          
-      }      
+        Client.boardcast((n) => n.sendPoolSubscribe(data))
+      }else if (data.minerCount){
+        Client.boardcast((n) => n.sendPoolMinerCount(data))        
+      }          
     })
   }
 

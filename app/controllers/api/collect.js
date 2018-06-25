@@ -12,7 +12,7 @@ router.post("/block", function* (){
       "scoop",
     ]))
   )){
-    Client.boardcastBlock()    
+    Client.boardcast((n) => n.sendFreshBlock())
   }  
 
   this.body = {}
@@ -28,8 +28,10 @@ router.post("/block/mined", function* (){
 
   Block.saveStatsData(_.pick(this.params, ["fileName", "height", "nonce", "deadline", "readedSize"]))
 
-  Client.boardcastBaseInfo()
-  Client.boardcastBlock()
+  Client.boardcast((n) => {
+    n.sendBaseInfo()
+    n.sendFreshBlock()
+  })  
   
   this.body = {}
 })

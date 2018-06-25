@@ -10,6 +10,22 @@
     <Content class="layout-content">
     <h2>Pool Stats</h2>
     
+    <Row :gutter=10 style="margin-bottom: 10px">
+      <Col span="3">
+        <Card class="x-card">
+          <p slot="title" title="Miner Count">Miner Count</p>
+          <p>{{ minerCount }}</p>
+        </Card>
+      </Col>
+
+      <Col span="3">
+        <Card class="x-card">
+          <p slot="title" title="Eff. Pool Capacity">Eff. Pool Capacity</p>
+          <p>{{ effectivePoolCapacity }} TB</p>
+        </Card>
+      </Col>
+    </Row>
+
     <Row :gutter=10>
       <Col span="3">
         <Card class="x-card">
@@ -98,7 +114,7 @@ export default {
 
   computed: {
     ...mapState('Pool', [
-      "height", "accountId", "address", "nConf", "lastActiveBlockHeight",
+      "height", "accountId", "address", "nConf", "lastActiveBlockHeight", "minerCount"
     ]),
     ...mapGetters('Pool', {
       deadline: "deadline",
@@ -108,6 +124,7 @@ export default {
       effectiveCapacity: "effectiveCapacity",
       historicalShare: "historicalShare",      
       pending: "pending",
+      effectivePoolCapacity: "effectivePoolCapacity",
     }),
   },
 
