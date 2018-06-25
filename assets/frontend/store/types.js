@@ -7,3 +7,5 @@ export const SET_POOL_MINER_COUNT     = "SET_POOL_MINER_COUNT"
 
 export const SET_BLOCK_LOADING        = "SET_BLOCK_LOADING"
 export const SET_BLOCK_HISTORY        = "SET_BLOCK_HISTORY"
+
+export const TICKTOCK                 = "TICKTOCK"

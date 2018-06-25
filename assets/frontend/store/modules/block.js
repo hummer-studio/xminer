@@ -5,6 +5,10 @@ import * as types from '../types'
 import { humanDeadline } from "../../../../utilities"
 
 const state = {
+  createdAt: null,
+  currentTime: null,
+  elapsed: null,
+
   height: 0,
   baseTarget: 0,
   targetDeadline: 0,
@@ -32,18 +36,33 @@ const getters = {
 
               return "-"
             }).value()
+  },
+  elapsed: (state) => {
+    if (state.elapsed && state.progress >= 1){
+      return humanDeadline(state.elapsed / 1000)
+    }
+
+    if (!state.currentTime || !state.createdAt){
+      return "-"
+    }
+
+    return humanDeadline((state.currentTime - state.createdAt) / 1000)    
   }
 }
 
 const actions = {
   async getBlocks({commit, dispatch}){
-    commit(types.SET_BLOCK_LOADING, true)  
+    commit(types.SET_BLOCK_LOADING, true)
 
     const r = await api.getBlocks()
 
     commit(types.SET_BLOCK_LOADING, false)  
     commit(types.SET_BLOCK_HISTORY, r)  
-  }  
+  },
+
+  async ticktock({commit, dispatch, state}){    
+    commit(types.TICKTOCK)
+  }
 }
 
 const mutations = {
@@ -59,6 +78,10 @@ const mutations = {
 
   [types.SET_BLOCK_HISTORY] (state, r){
     state.his = r.data
+  },
+
+  [types.TICKTOCK] (state){
+    state.currentTime = new Date() * 1
   }
 }
 

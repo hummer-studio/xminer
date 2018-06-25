@@ -8,7 +8,8 @@ class Block{
     this.readedSize = 0
     this.nonces = []   
      
-    _.merge(this, params, {     
+    _.merge(this, params, {
+      createdAt: params.mined ? new Date() * 1 : null,
       difficulty: getDifficulty(params.baseTarget)
     })
   }
@@ -22,7 +23,7 @@ class Block{
   }
 
   static getConfirmedBlocks(){
-    return _.chain(this.all).filter((n) => n.nonces.length > 0).value()
+    return _.chain(this.getAll()).filter((n) => n.nonces.length > 0).value()
   }
 
   static getBestNonce(){
@@ -30,7 +31,7 @@ class Block{
   }
 
   static getLast360RoundNonce(){
-    return _.chain(this.all)
+    return _.chain(this.getAll())
             .slice(-360)
             .map((n) => n.getBestNonce())
             .compact()
@@ -39,12 +40,13 @@ class Block{
   }
 
   static saveStatsData(params){
-    _.chain(this.all).find((n) => n.height == params.height).thru((r) => {
+    _.chain(this.getAll()).find((n) => n.height == params.height).thru((r) => {
       if (!r){
         return
       }
 
       r.readedSize += params.readedSize
+      r.elapsed = new Date() * 1 - r.createdAt     
 
       if (!params.nonce){
         return
@@ -61,7 +63,7 @@ class Block{
   }  
 
   static save(params){
-    return _.chain(this.all)
+    return _.chain(this.getAll())
      .find((n) => n.height == params.height)
      .thru((r) => {
        if (r){
@@ -78,7 +80,7 @@ class Block{
   }
   
   static getFresh(){
-    return _.last(this.all)
+    return _.last(this.getAll())
   }
 
   static getAll(){
@@ -86,7 +88,7 @@ class Block{
   }
 
   static getMinedAll(){
-    return _.filter(this.all, (n) => n.mined)
+    return _.filter(this.getAll(), (n) => n.mined)
   }
 
   static fillTimestamp(){

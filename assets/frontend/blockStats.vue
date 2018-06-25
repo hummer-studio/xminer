@@ -15,6 +15,12 @@
       </Col>
       <Col span="3">
         <Card class='x-card'>
+          <p slot="title" title="Elapsed">Elapsed</p>          
+          <p>{{ elapsed }}</p>
+        </Card>
+      </Col>         
+      <Col span="3">
+        <Card class='x-card'>
           <p slot="title" title="Best Deadline">Best Deadline</p>          
           <a @click="modalNonces = true">{{ deadline }}</a>
         </Card>
@@ -94,6 +100,8 @@ export default {
 
   data () {      
     return  {
+      timer: null,
+
       tableWidth: 1024,
       modalNonces: false,
       modalScoop: false,
@@ -119,11 +127,7 @@ export default {
 
   computed: {
     ...mapState("Block", ["height", "nonces", "baseTarget", "scoop", "progress", "blocksLoading", "his"]),
-    ...mapGetters("Block", {
-      targetDeadline: "targetDeadline",
-      difficulty: "difficulty",
-      deadline: "deadline",
-    }),
+    ...mapGetters("Block", ["elapsed", "targetDeadline", "difficulty", "deadline"]),
 
     noncesData: function (){            
       return _.chain(this.nonces).orderBy(["deadline", "asc"]).map((n) => {
@@ -275,7 +279,7 @@ export default {
   },
 
   methods: {      
-    ...mapActions("Block", ["getBlocks"]),
+    ...mapActions("Block", ["getBlocks", "ticktock"]),
     toggleScoop: function(){
       this.modalScoop = true
 
@@ -288,7 +292,15 @@ export default {
     }
   },
 
-  mounted () {    
+  beforeDestroy(){
+    if (this.timer){
+      clearInterval(this.timer)
+      this.timer = null
+    }
+  },
+
+  mounted () {
+    this.timer = setInterval(this.ticktock.bind(this), 1000)
   }
 }
 </script>
