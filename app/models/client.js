@@ -41,14 +41,16 @@ class Client{
 
   sendFreshBlock(){
     const freshBlock = Block.getFresh()
-    if (freshBlock){
-      return this.ws.send(JSON.stringify({
-        command: 'block',
-        data: _.merge({}, freshBlock, {
-          progress: freshBlock.getMinedProgress(),          
-        })
-      }))      
+    if (!freshBlock){
+      return
     }
+
+    return this.ws.send(JSON.stringify({
+      command: 'block',
+      data: _.merge({}, freshBlock, {
+        progress: freshBlock.getMinedProgress(),          
+      })
+    }))
   }  
 
   sendPoolSubscribe(data){
