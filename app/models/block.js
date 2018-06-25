@@ -1,6 +1,6 @@
 'use strict'
 
-     const Wallet = require("../../mine/wallet"),
+     const Wallet = require("../../mine/wallet"),     
 { getDifficulty } = require("../../mine/utilities")
 
 class Block{
@@ -100,20 +100,7 @@ class Block{
   static async initialize(){
     this.all = []
 
-    this.best = null
-
-
-    await aigle.resolve(_.range(0, 360, 100)).map((n) => {      
-      return Wallet.send("getBlocks", {firstIndex: n})
-    }).map(({blocks}) => blocks).then(_.flatten).filter((n) => {
-      return n.height      
-    }).map((r) => {    
-      return _.merge({mined: false}, 
-        _.pick(r, ['height', 'scoopNum', 'timestamp', 'baseTarget'])
-      )      
-    }).then((n) => _.orderBy(n, ["timestamp"])).forEach((n) => {
-      Block.save(n)
-    })
+    this.best = null    
   }  
 }
 
