@@ -21,7 +21,7 @@
       <Col span="3">
         <Card class="x-card">
           <p slot="title" title="Eff. Pool Capacity">Eff. Pool Capacity</p>
-          <p>{{ effectivePoolCapacity }} TB</p>
+          <p>{{ effectivePoolCapacity }}</p>
         </Card>
       </Col>
     </Row>

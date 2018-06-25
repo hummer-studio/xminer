@@ -18,7 +18,7 @@ const state = {
   pending: 0,
 
   effectivePoolCapacity: 0,
-  minerCount: 0,
+  minerCount: "-",
 }
 
 const getters = {
@@ -31,7 +31,7 @@ const getters = {
 
   miner: (state) => state.miner || "-",  
   effectiveCapacity: (state) => state.effectiveCapacity.toFixed(4),
-  effectivePoolCapacity: (state) => state.effectivePoolCapacity.toFixed(4),
+  effectivePoolCapacity: (state) => state.effectivePoolCapacity ? `${state.effectivePoolCapacity.toFixed(4)} TB` : "-",
   historicalShare: (state) => (state.historicalShare * 100).toFixed(4),  
   pending: (state) => state.pending / 100000000,
 }
