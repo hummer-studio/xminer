@@ -80,7 +80,7 @@ class Block{
   }
   
   static getFresh(){
-    return _.last(this.getAll())
+    return _.last(this.getMinedAll())
   }
 
   static getAll(){
