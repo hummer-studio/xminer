@@ -13,7 +13,7 @@
           <p>{{ height }}</p>
         </Card>
       </Col>
-      <Col span="3">
+      <Col span="4">
         <Card class='x-card'>
           <p slot="title" title="Elapsed">Elapsed</p>          
           <p>{{ elapsed }}</p>
