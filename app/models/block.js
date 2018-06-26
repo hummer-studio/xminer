@@ -23,7 +23,7 @@ class Block{
   }
 
   static getConfirmedBlocks(){
-    return _.chain(this.getAll()).filter((n) => n.nonces.length > 0).value()
+    return _.chain(this.getMinedAll()).filter((n) => n.nonces.length > 0).value()
   }
 
   static getBestNonce(){
@@ -31,7 +31,7 @@ class Block{
   }
 
   static getLast360RoundNonce(){
-    return _.chain(this.getAll())
+    return _.chain(this.getMinedAll())
             .slice(-360)
             .map((n) => n.getBestNonce())
             .compact()
