@@ -38,13 +38,13 @@ const getters = {
             }).value()
   },
   elapsed: (state) => {
-    if (state.elapsed && state.progress >= 1){
-      return `${humanDeadline((state.currentTime - state.createdAt) / 1000)} (${humanDeadline(state.elapsed / 1000)})`
-    }
-
     if (!state.currentTime || !state.createdAt){
       return "-"
     }
+    
+    if (state.elapsed && state.progress >= 1){
+      return `${humanDeadline((state.currentTime - state.createdAt) / 1000)} (${humanDeadline(state.elapsed / 1000)})`
+    }    
 
     return humanDeadline((state.currentTime - state.createdAt) / 1000)    
   }
