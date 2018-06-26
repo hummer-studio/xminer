@@ -60,6 +60,8 @@
     "node-gyp": "^3.6.2",
     "node-sass": "^3.13.1",
     "pm2": "^2.9.1",
+    "raven": "^2.6.3",
+    "raven-js": "^3.26.3",
     "recursive-readdir": "^2.2.2",
     "request-promise": "^4.2.2",
     "require-dir-all": "^0.4.9",

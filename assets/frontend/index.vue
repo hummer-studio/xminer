@@ -15,6 +15,16 @@ Vue.use(VueRouter)
 Vue.use(VueResource)
 Vue.use(iView, {locale})
 
+import Raven from 'raven-js';
+import RavenVue from 'raven-js/plugins/vue';
+
+if (isProduction){
+  Raven
+    .config('https://a5b90a6cf9044f028dd3f7396ab50d34@sentry.io/1232569')
+    .addPlugin(RavenVue, Vue)
+    .install();
+}
+
 import Home from "./home"
 
 const router = new VueRouter({
