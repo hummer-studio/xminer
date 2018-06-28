@@ -143,9 +143,9 @@ async function worker(files){
 
     addon.run({
       generationSignature: generationSignature, 
-      baseTarget: baseTarget,
-      height: height,
-      targetDeadline: deadline,
+      baseTarget: baseTarget.toString(),
+      height: height.toString(),
+      targetDeadline: deadline.toString(),
       fullPath: n.fullPath, 
       fileName: n.fileName, 
       isPoc2: n.isPoc2,
@@ -234,15 +234,15 @@ async function worker2(){
   
   await aigle.promisify(async.eachLimit)(_.chain().range(totalNonce / perNonce).shuffle().value(), 10, (n, next) => {
     addon.smartMine({
-      // account: "236628450097552694",
-      account: "399604754858490715",
+      account: "236628450097552694",
+      // account: "399604754858490715",
       startNonce: (startNonce + n * perNonce).toString(),
       nonces: perNonce.toString(),
 
-      baseTarget: Number(baseTarget),
-      targetDeadline,
-      generationSignature,
-      height: Number(height),
+      baseTarget: baseTarget.toString(),
+      targetDeadline: targetDeadline.toString(),
+      generationSignature: generationSignature.toString(),
+      height: height.toString(),
     }, (err, result) => {
       if (err){
         logger.error(err);

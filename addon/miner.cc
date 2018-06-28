@@ -22,10 +22,10 @@ public:
     CALLBACK_CONTEXT ctx;
     memset(&ctx, 0, sizeof(CALLBACK_CONTEXT));    
 
-    ctx.generationSignature = params.Get("generationSignature").As<String>().Utf8Value();    
-    ctx.baseTarget = params.Get("baseTarget").As<Number>().Int64Value();
-    ctx.height = params.Get("height").As<Number>().Int64Value();
-    ctx.targetDeadline = params.Get("targetDeadline").As<Number>().Int64Value();    
+    ctx.generationSignature = params.Get("generationSignature").As<String>().Utf8Value();        
+    ctx.baseTarget = atoll(params.Get("baseTarget").As<String>().Utf8Value().c_str());
+    ctx.height = atoll(params.Get("height").As<String>().Utf8Value().c_str());
+    ctx.targetDeadline = atoll(params.Get("targetDeadline").As<String>().Utf8Value().c_str());
     ctx.path = params.Get("fullPath").As<String>().Utf8Value();
     ctx.name = params.Get("fileName").As<String>().Utf8Value();
     
@@ -34,8 +34,6 @@ public:
     Function cb = info[1].As<Function>();    
     
     MineWorker* worker = new MineWorker(cb, ctx);
-    // worker->Receiver().Set("data", "fuck");
-
     worker->Queue();
   }
 
@@ -274,11 +272,10 @@ public:
     ctx.result.best = 0;
     ctx.result.deadline = 0;
 
-    // ctx.cache = params.Get("buffer").As<Buffer<char>>().Data();    
-    ctx.generationSignature = params.Get("generationSignature").As<String>().Utf8Value();    
-    ctx.baseTarget = params.Get("baseTarget").As<Number>().Int64Value();
-    ctx.height = params.Get("height").As<Number>().Int64Value();
-    ctx.targetDeadline = params.Get("targetDeadline").As<Number>().Int64Value();    
+    ctx.generationSignature = params.Get("generationSignature").As<String>().Utf8Value();        
+    ctx.baseTarget = atoll(params.Get("baseTarget").As<String>().Utf8Value().c_str());
+    ctx.height = atoll(params.Get("height").As<String>().Utf8Value().c_str());
+    ctx.targetDeadline = atoll(params.Get("targetDeadline").As<String>().Utf8Value().c_str());
 
     ctx.addr = atoll(params.Get("account").As<String>().Utf8Value().c_str());        
     ctx.startNonce = atoll(params.Get("startNonce").As<String>().Utf8Value().c_str());
