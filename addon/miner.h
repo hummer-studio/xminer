@@ -144,13 +144,14 @@ public:
 
   ~CFile(){
     if (_ff >= 0){
+      #ifdef __linux__
+      posix_fadvise(_ff, 0, 0, POSIX_FADV_DONTNEED);
+      #endif
+
       close(_ff);
     }
 
-    if (_f){
-      #ifdef __linux__
-      posix_fadvise(_f, 0, 0, POSIX_FADV_DONTNEED);
-      #endif      
+    if (_f){            
       fclose(_f);
     }
   }
