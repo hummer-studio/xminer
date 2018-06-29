@@ -113,10 +113,11 @@ protected:
     #endif
 
     staggerSize = staggerSize / noncearguments * noncearguments;
-    size_t bufferCount = std::min<size_t>(MAX_CACHE_SCOOP_SIZE, staggerSize);
+    size_t bufferCount = std::min<size_t>(MAX_CACHE_SCOOP_SIZE, staggerSize);    
+
+#ifdef USE_DIRECT_IO
     size_t bufferSize = (bufferCount * SCOOP_SIZE - 1) / getpagesize() * getpagesize() + getpagesize();
 
-#ifdef USE_DIRECT_IO    
     char *pBuffer = NULL;
     char *pBuffer2 = NULL;
 
@@ -125,9 +126,10 @@ protected:
       posix_memalign((void**)&pBuffer2, getpagesize(), bufferSize);
     }    
 #else
+    size_t bufferSize = bufferCount * SCOOP_SIZE;
+
     char *pBuffer = new char[bufferSize];
-    char *pBuffer2 = isPoc2Compat ? new char[bufferSize] : NULL;  
-    
+    char *pBuffer2 = isPoc2Compat ? new char[bufferSize] : NULL;      
 #endif
 
     log(printf("nonceSize: %llu, bufferCount: %08zX, bufferSize: 08zX, scoop: %zu\n", nonceSize, bufferCount, bufferSize, scoop));
@@ -148,6 +150,16 @@ protected:
 
         log(printf("loop: %llX, %08zX, %llX\n", i, bufferCount, staggerSize));
 
+#ifdef USE_DIRECT_IO
+        auto off1 = (start + i * SCOOP_SIZE) % getpagesize();
+        auto off2 = (MirrorStart + i * SCOOP_SIZE) % getpagesize();
+#else
+        auto off1 = 0;
+        auto off2 = 0;
+#endif
+
+        log(printf("off1: %llu start: %llu bufferSize: %llu readSize: %llu pageSize: %llu\n", off1, start + i * SCOOP_SIZE - off1, bufferSize, bufferCount * SCOOP_SIZE, getpagesize()));
+
         // size_t d1 = (start + i * 64) % getpagesize();
         // size_t d2 = getpagesize() - d1;
 
@@ -156,36 +168,37 @@ protected:
         // }
         
         // pBuffer = (char*)mmap(NULL, bufferSize, PROT_READ, MAP_SHARED, f, start + i * 64 - d1);
-        // if (pBuffer == MAP_FAILED){
-        //   perror("fuick");
-        // }
-        // printf("mmap: %08X\n", pBuffer);
-
-        log(printf("seek: %llX %llX\n", (uint64_t)start + i * SCOOP_SIZE, (uint64_t)MirrorStart + i * SCOOP_SIZE));
-        if (!f.seek(start + i * SCOOP_SIZE)){
-          break;
-        }       
-
-        CTickTime tt;
         
-        if (!f.read(pBuffer, bufferSize)){
+        CTickTime tt;
+
+        if (!f.seek(start + i * SCOOP_SIZE - off1)){
+          break;
+        }
+        if (!f.read(pBuffer, off1 > 0 ? (bufferCount * SCOOP_SIZE) + getpagesize() : bufferSize)){
           break;
         }      
 
         pData->result.readedSize += bufferSize;
-        
+        if (off1 > 0){
+          pData->result.readedSize += getpagesize();
+        }        
 
         if (isPoc2Compat){
-          f.seek(MirrorStart + i * SCOOP_SIZE);
-          if (!f.read(pBuffer2, bufferSize)){
+          if (!f.seek(MirrorStart + i * SCOOP_SIZE - off2)){
+            break;
+          }          
+          if (!f.read(pBuffer2, off2 > 0 ? (bufferCount * SCOOP_SIZE) + getpagesize() : bufferSize)){
             break;
           }
           
           pData->result.readedSize += bufferSize;
+          if (off2 > 0){
+            pData->result.readedSize += getpagesize();
+          }
           pData->result.readElapsed += tt.tick();
 
           for (size_t t = 0; t < bufferCount * SCOOP_SIZE; t += SCOOP_SIZE) {
-            memcpy(&pBuffer[t + HASH_SIZE], &pBuffer2[t + HASH_SIZE], HASH_SIZE); //copy second hash to correct place.
+            memcpy(&pBuffer[t + HASH_SIZE + off1], &pBuffer2[t + HASH_SIZE + off2], HASH_SIZE); //copy second hash to correct place.
           }
         }else{
           pData->result.readElapsed += tt.tick();
@@ -194,12 +207,12 @@ protected:
         tt.reInitialize();
 
         #ifdef __AVX2__
-          procscoop_m256_8(signature, n + nonceStart + i, bufferCount, pBuffer, procscoop_callback, pData);// Process block AVX2
+          procscoop_m256_8(signature, n + nonceStart + i, bufferCount, pBuffer + off1, procscoop_callback, pData);// Process block AVX2
         #else
           #ifdef __AVX__
-            procscoop_m_4(signature, n + nonceStart + i, bufferCount, pBuffer, procscoop_callback, pData);// Process block AVX
+            procscoop_m_4(signature, n + nonceStart + i, bufferCount, pBuffer + off1, procscoop_callback, pData);// Process block AVX
           #else
-            procscoop_sph(signature, n + nonceStart + i, bufferCount, pBuffer, procscoop_callback, pData);// Process block SSE4
+            procscoop_sph(signature, n + nonceStart + i, bufferCount, pBuffer + off1, procscoop_callback, pData);// Process block SSE4
           #endif
         #endif
 

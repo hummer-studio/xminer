@@ -144,7 +144,8 @@ public:
 
   ~CFile(){
     if (_ff >= 0){
-      #ifdef __linux__
+      #if defined(__linux__) && defined(USE_DIRECT_IO)
+      //for docker
       posix_fadvise(_ff, 0, 0, POSIX_FADV_DONTNEED);
       #endif
 
@@ -163,6 +164,7 @@ public:
       return false;
     }  
 
+    log(printf("seek: %llX\n", pos));
 #ifndef _WIN32
     auto r = fseeko(_f, pos, SEEK_SET);
 #else
@@ -185,10 +187,17 @@ public:
     uint32_t cb = 0;
     do{
       auto c = fread(pBuffer + cb, 1, s - cb, _f);
-      if (c <= 0){
+      if (c == 0){
+        log(printf("fread end\n"));
+        return true;
+      }
+
+      if (c < 0){
         printf("fread %08X error. return: %08zX\n", s, c);
         return false;
       }
+
+      log(printf("read: %zu\n", c));
 
       cb += c;
     }while(cb < s);    
