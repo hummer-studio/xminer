@@ -143,16 +143,18 @@ public:
   }
 
   ~CFile(){
-    if (_f){            
-      fclose(_f);
-    }
-
     if (_ff >= 0){
       #if defined(__linux__) && defined(USE_DIRECT_IO)
       //for docker
       posix_fadvise(_ff, 0, 0, POSIX_FADV_DONTNEED);
       #endif
+    }    
 
+    if (_f){            
+      fclose(_f);
+    }
+
+    if (_ff >= 0){
       close(_ff);
     }    
   }
