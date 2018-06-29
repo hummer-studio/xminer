@@ -122,7 +122,7 @@ private:
 
 public:
   CFile(const char *pPath){
-    #if __APPLE__
+    #ifdef __APPLE__
     _f = open(pPath, O_RDONLY);
     fcntl(_f, F_NOCACHE, true);
   
