@@ -114,13 +114,12 @@ protected:
 
     staggerSize = staggerSize / noncearguments * noncearguments;
     size_t bufferCount = std::min<size_t>(MAX_CACHE_SCOOP_SIZE, staggerSize);
-    // bufferSize = (SCOOP_SIZE * 10 - 1) / SCOOP_SIZE * SCOOP_SIZE + SCOOP_SIZE;
-    // bufferSize = (bufferSize - 1) / getpagesize() * getpagesize() + getpagesize();
+    size_t bufferSize = (bufferCount * SCOOP_SIZE - 1) / getpagesize() * getpagesize() + getpagesize();
     
-    char *pBuffer = new char[bufferCount * SCOOP_SIZE];
-    char *pBuffer2 = isPoc2Compat ? new char[bufferCount * SCOOP_SIZE] : NULL;  
+    char *pBuffer = new char[bufferSize];
+    char *pBuffer2 = isPoc2Compat ? new char[bufferSize] : NULL;  
 
-    log(printf("nonceSize: %llu, bufferCount: %08zX, scoop: %d\n", nonceSize, bufferCount, scoop));
+    log(printf("nonceSize: %llu, bufferCount: %08zX, bufferSize: 08zX, scoop: %zu\n", nonceSize, bufferCount, bufferSize, scoop));
 
     for (uint64_t n = 0; n < nonceSize; n += staggerSize){
       auto start = n * PLOT_SIZE + scoop * staggerSize * SCOOP_SIZE;
@@ -158,20 +157,20 @@ protected:
 
         CTickTime tt;
         
-        if (!f.read(pBuffer, bufferCount * SCOOP_SIZE)){
+        if (!f.read(pBuffer, bufferSize)){
           break;
         }      
 
-        pData->result.readedSize += bufferCount * SCOOP_SIZE;
+        pData->result.readedSize += bufferSize;
         
 
         if (isPoc2Compat){
           f.seek(MirrorStart + i * SCOOP_SIZE);
-          if (!f.read(pBuffer2, bufferCount * SCOOP_SIZE)){
+          if (!f.read(pBuffer2, bufferSize)){
             break;
           }
           
-          pData->result.readedSize += bufferCount * SCOOP_SIZE;
+          pData->result.readedSize += bufferSize;
           pData->result.readElapsed += tt.tick();
 
           for (size_t t = 0; t < bufferCount * SCOOP_SIZE; t += SCOOP_SIZE) {
