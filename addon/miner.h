@@ -148,6 +148,9 @@ public:
     }
 
     if (_f){
+      #ifdef __linux__
+      posix_fadvise(_f, 0, 0, POSIX_FADV_DONTNEED);
+      #endif      
       fclose(_f);
     }
   }
@@ -187,7 +190,7 @@ public:
       }
 
       cb += c;
-    }while(cb < s);
+    }while(cb < s);    
 
     return true;
   }
