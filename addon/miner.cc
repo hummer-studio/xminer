@@ -115,9 +115,20 @@ protected:
     staggerSize = staggerSize / noncearguments * noncearguments;
     size_t bufferCount = std::min<size_t>(MAX_CACHE_SCOOP_SIZE, staggerSize);
     size_t bufferSize = (bufferCount * SCOOP_SIZE - 1) / getpagesize() * getpagesize() + getpagesize();
-    
+
+#ifdef USE_DIRECT_IO    
+    char *pBuffer = NULL;
+    char *pBuffer2 = NULL;
+
+    posix_memalign((void**)&pBuffer, getpagesize(), bufferSize);
+    if (isPoc2Compat){
+      posix_memalign((void**)&pBuffer2, getpagesize(), bufferSize);
+    }    
+#else
     char *pBuffer = new char[bufferSize];
     char *pBuffer2 = isPoc2Compat ? new char[bufferSize] : NULL;  
+    
+#endif
 
     log(printf("nonceSize: %llu, bufferCount: %08zX, bufferSize: 08zX, scoop: %zu\n", nonceSize, bufferCount, bufferSize, scoop));
 
