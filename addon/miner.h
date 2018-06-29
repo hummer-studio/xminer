@@ -115,85 +115,38 @@ public:
   }
 };
 
-#ifdef USE_DIRECT_IO
-class CFile{
-private:
-  int _f;
-
-public:
-  CFile(const char *pPath){
-    #ifdef __APPLE__
-    _f = open(pPath, O_RDONLY);
-    fcntl(_f, F_NOCACHE, true);
-  
-    #else
-    _f = open(pPath, O_RDONLY | O_DIRECT);
-    #endif
-    
-    if (_f <= 0){
-      printf("open file %s failed.\n", pPath);
-    }
-  }
-
-  ~CFile(){
-    if (_f > 0){
-      close(_f);
-    }
-  }
-
-public:
-  bool seek(uint64_t pos){
-    if (_f <= 0){
-      printf("seek failed. invalid handle.\n");
-      return false;
-    }
-
-    auto r = ::lseek(_f, pos, SEEK_SET);
-    if (r < 0){
-      printf("lseek %llX failed. return: %llu\n", pos, r);
-      return false;
-    }
-
-    return true;
-  }
-
-  bool read(char *pBuffer, uint32_t s){
-    if (!_f){
-      printf("read failed. invalid handle.\n");
-      return false;
-    }
-
-    uint32_t cb = 0;
-    do{
-      
-      auto c = ::read(_f, pBuffer + cb, std::min<size_t>(s - cb, 1024 * 1024 * 100));
-      if (c <= 0){
-        printf("read %08X error. return: %08zX\n", s, c);
-        return false;
-      }
-
-      cb += c;
-    }while(cb < s);
-
-    return true;
-  }
-};
-
-#else
-
 class CFile{
 private:
   FILE *_f;
+  int _ff;
 
 public:
-  CFile(const char *pPath){          
-    _f = fopen(pPath, "r");
+  CFile(const char *pPath){
+    _ff = -1;
+
+    #ifdef USE_DIRECT_IO  
+      #ifdef __APPLE__
+        _ff = open(pPath, O_RDONLY);
+        fcntl(_ff, F_NOCACHE, true);
+      #else
+        _ff = open(pPath, O_RDONLY | O_DIRECT);
+      #endif    
+
+      _f = fdopen(_ff, "rb");
+    #else
+      _f = fopen(pPath, "rb");
+    #endif          
+    
     if (!_f){
       printf("open file %s failed.\n", pPath);
     }
   }
 
   ~CFile(){
+    if (_ff >= 0){
+      close(_ff);
+    }
+
     if (_f){
       fclose(_f);
     }
@@ -204,9 +157,7 @@ public:
     if (!_f){
       printf("fseeko failed. invalid handle.\n");
       return false;
-    }
-
-    
+    }  
 
 #ifndef _WIN32
     auto r = fseeko(_f, pos, SEEK_SET);
@@ -241,7 +192,6 @@ public:
     return true;
   }
 };
-#endif
 
 inline uint32_t getScoop(const char *signature, size_t size, uint64_t height){    
   char scoopgen[40];  
