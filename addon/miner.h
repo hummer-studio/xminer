@@ -143,6 +143,10 @@ public:
   }
 
   ~CFile(){
+    if (_f){            
+      fclose(_f);
+    }
+
     if (_ff >= 0){
       #if defined(__linux__) && defined(USE_DIRECT_IO)
       //for docker
@@ -150,11 +154,7 @@ public:
       #endif
 
       close(_ff);
-    }
-
-    if (_f){            
-      fclose(_f);
-    }
+    }    
   }
 
 public:
