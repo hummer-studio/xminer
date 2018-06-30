@@ -4,7 +4,7 @@ const dirRecursive = require("recursive-readdir"),
               path = require("path"),
                 fs = require("fs"),
            request = require("request-promise"),
-{ retry, humanDeadline } = require("../utilities"), 
+{ retry, humanDeadline, humanSize2Bytes } = require("../utilities"), 
              addon = require("../build/Release/miner");
 
 const HTTP_TIMEOUT = 1000 * 15             
@@ -115,7 +115,7 @@ async function worker(files){
     return
   }
 
-  visitor.event("base", "newBlock", "height", height).send()
+  visitor.event("base", "newBlock", `height: ${height}`).send()
 
   GlobalHeight.set(height)  
 
@@ -205,7 +205,7 @@ async function worker(files){
   }else{
     logger.info(`height: ${height}, deadline: ${humanDeadline(bestDeadline)}, mining is done.`)
 
-    visitor.event("base", "mined", "deadline", bestDeadline).send()
+    visitor.event("base", "mined", `deadline: ${humanDeadline(bestDeadline)}`).send()
   }  
 }
 
@@ -301,7 +301,7 @@ require("../config")(async function () {
     // return _.filter(n, m => m.isPoc2)
   })
 
-  visitor.event("base", "startup", "fileSize", Plots.getSize()).send()
+  visitor.event("base", "startup", `plotSize: ${humanSize2Bytes(Plots.getSize())}`).send()
 
   GlobalHeight.set(0)
   setInterval(() => worker(files),  REFRESH_MINE_INFO_TIME)
