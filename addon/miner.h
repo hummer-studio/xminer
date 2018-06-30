@@ -25,6 +25,8 @@
 #define memcpy_s(x1, x2, x3, x4) memcpy(x1, x3, x4)
 #endif
 
+#define USE_DIRECT_IO
+
 #define HASH_SIZE             32
 #define HASHES_PER_SCOOP      2
 #define SCOOP_SIZE            (HASHES_PER_SCOOP * HASH_SIZE)
@@ -116,19 +118,45 @@ public:
 class CFile{
 private:
   FILE *_f;
+  int _ff;
 
 public:
   CFile(const char *pPath){
-    _f = fopen(pPath, "r");
+    _ff = -1;
+
+    #ifdef USE_DIRECT_IO  
+      #ifdef __APPLE__
+        _ff = open(pPath, O_RDONLY);
+        fcntl(_ff, F_NOCACHE, true);
+      #else
+        _ff = open(pPath, O_RDONLY | O_DIRECT);
+      #endif    
+
+      _f = fdopen(_ff, "rb");
+    #else
+      _f = fopen(pPath, "rb");
+    #endif          
+    
     if (!_f){
       printf("open file %s failed.\n", pPath);
     }
   }
 
   ~CFile(){
-    if (_f){
+    if (_ff >= 0){
+      #if defined(__linux__) && defined(USE_DIRECT_IO)
+      //for docker
+      posix_fadvise(_ff, 0, 0, POSIX_FADV_DONTNEED);
+      #endif
+    }    
+
+    if (_f){            
       fclose(_f);
     }
+
+    if (_ff >= 0){
+      close(_ff);
+    }    
   }
 
 public:
@@ -136,8 +164,9 @@ public:
     if (!_f){
       printf("fseeko failed. invalid handle.\n");
       return false;
-    }
+    }  
 
+    log(printf("seek: %llX\n", pos));
 #ifndef _WIN32
     auto r = fseeko(_f, pos, SEEK_SET);
 #else
@@ -160,13 +189,20 @@ public:
     uint32_t cb = 0;
     do{
       auto c = fread(pBuffer + cb, 1, s - cb, _f);
-      if (c <= 0){
+      if (c == 0){
+        log(printf("fread end\n"));
+        return true;
+      }
+
+      if (c < 0){
         printf("fread %08X error. return: %08zX\n", s, c);
         return false;
       }
 
+      log(printf("read: %zu\n", c));
+
       cb += c;
-    }while(cb < s);
+    }while(cb < s);    
 
     return true;
   }
