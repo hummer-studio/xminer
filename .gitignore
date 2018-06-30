@@ -3,6 +3,8 @@
 .vscode/
 build/
 
+.config
+
 node_modules/
 
 **/bundle.js
