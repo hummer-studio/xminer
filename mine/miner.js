@@ -113,7 +113,9 @@ async function worker(files){
   if (!height || GlobalHeight.get() >= height){
     //not found more height.
     return
-  }  
+  }
+
+  visitor.event("base", "newBlock", "height", height).send()
 
   GlobalHeight.set(height)  
 
@@ -202,6 +204,8 @@ async function worker(files){
     logger.info(`height: ${height}, mining is done. not found best deadline.`)
   }else{
     logger.info(`height: ${height}, deadline: ${humanDeadline(bestDeadline)}, mining is done.`)
+
+    visitor.event("base", "mined", "deadline", bestDeadline).send()
   }  
 }
 
@@ -297,8 +301,10 @@ require("../config")(async function () {
     // return _.filter(n, m => m.isPoc2)
   })
 
+  visitor.event("base", "startup", "fileSize", Plots.getSize()).send()
+
   GlobalHeight.set(0)
-  setInterval(() => worker(files),  REFRESH_MINE_INFO_TIME)    
+  setInterval(() => worker(files),  REFRESH_MINE_INFO_TIME)
 
   // process.env["UV_THREADPOOL_SIZE"] = 12  
   // setInterval(() => worker2(),  REFRESH_MINE_INFO_TIME)      
