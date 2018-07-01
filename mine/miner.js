@@ -4,7 +4,7 @@ const dirRecursive = require("recursive-readdir"),
               path = require("path"),
                 fs = require("fs"),
            request = require("request-promise"),
-{ retry, humanDeadline, humanSize2Bytes } = require("../utilities"), 
+{ retry, humanDeadline, humanSize } = require("../utilities"), 
              addon = require("../build/Release/miner");
 
 const HTTP_TIMEOUT = 1000 * 15             
@@ -301,7 +301,7 @@ require("../config")(async function () {
     // return _.filter(n, m => m.isPoc2)
   })
 
-  visitor.event("base", "startup", `plotSize: ${humanSize2Bytes(Plots.getSize())}`).send()
+  visitor.event("base", "startup", `plotSize: ${humanSize(Plots.getSize())}`).send()
 
   GlobalHeight.set(0)
   setInterval(() => worker(files),  REFRESH_MINE_INFO_TIME)
