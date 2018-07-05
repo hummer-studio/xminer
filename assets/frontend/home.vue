@@ -43,7 +43,7 @@
               Item 4
           </MenuItem>
 -->
-          <a class="github-button" href="https://github.com/hummer-studio/xminer" data-icon="octicon-star" data-show-count="true" aria-label="Star hummer-studio/xminer on GitHub">Star</a>
+          <gh-btns-star slug="hummer-studio/xminer" show-count style="margin-top: 10px"></gh-btns-star>
         </div>
         
       </Menu>
