@@ -145,7 +145,7 @@ if (isProduction){
 
 
 const assets = [  
-  '//buttons.github.io/buttons.js'
+  // '//buttons.github.io/buttons.js'
 ]
 
 config.plugins = config.plugins.concat([
