@@ -140,6 +140,7 @@ if (isProduction){
 
 
 const assets = [  
+  `//files.coinmarketcap.com/static/widget/currency.js`
   // '//buttons.github.io/buttons.js'
 ]
 
