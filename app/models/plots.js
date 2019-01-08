@@ -61,7 +61,7 @@ class Plots{
 
     /////////////////////////
 
-    this.files = await aigle.resolve(SETTINGS.plots)
+    this.files = await aigle.resolve(SETTINGS.plots_directory_path)
                           .map((directory) => dirRecursive(directory))
                           .then(_.flatten).then(_.uniq)
                           .map((fullPath) => {
