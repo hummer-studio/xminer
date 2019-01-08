@@ -21,8 +21,15 @@ npm run build-addon
 ```
 
 ## Configure
-Edit the file: `config/config.js`, replace your `pool_address`, `plots` paths and `deadline`
-
+set environment variable:
+```
+PORT=3001  
+PLOTS_DIRECTORY_PATH=/Volumes/plots1,/Volumes/plots2  
+POOL_ADDRESS=http://0-100-pool.burst.cryptoguru.org:8124  
+WALLET_ADDRESS=https://wallet3.burst-team.us:2083  
+DEADLINE=15552000  
+MAX_READER=2  
+```
 ## Run
 `NODE_ENV=production npm run deploy`
 

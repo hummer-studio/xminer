@@ -16,6 +16,15 @@
 .layout-footer-center{
   text-align: center;
 }
+
+.market{  
+  margin-top: 30px;
+    
+  .coinmarketcap-currency-widget{
+    margin: 0 auto;
+    width: 400px;
+  }
+}
 </style>
 
 <template>
@@ -43,7 +52,7 @@
               Item 4
           </MenuItem>
 -->
-          <a class="github-button" href="https://github.com/hummer-studio/xminer" data-icon="octicon-star" data-show-count="true" aria-label="Star hummer-studio/xminer on GitHub">Star</a>
+          <gh-btns-star slug="hummer-studio/xminer" show-count style="margin-top: 10px"></gh-btns-star>
         </div>
         
       </Menu>
@@ -52,6 +61,10 @@
     <BaseStats />
     <BlockStats />
     <PoolStats />
+    
+    <div class="market">
+      <div class="coinmarketcap-currency-widget" data-currencyid="573" data-base="BTC" data-secondary="USD" data-ticker="true" data-rank="true" data-marketcap="true" data-volume="true" data-stats="USD" data-statsticker="false"></div>
+    </div>    
 
     <Footer class="layout-footer-center"></Footer>
   </Layout>

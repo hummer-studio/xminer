@@ -15,6 +15,11 @@ Vue.use(VueRouter)
 Vue.use(VueResource)
 Vue.use(iView, {locale})
 
+import VueGitHubButtons from 'vue-github-buttons'
+import 'vue-github-buttons/dist/vue-github-buttons.css'
+
+Vue.use(VueGitHubButtons, { useCache: true })
+
 import Raven from 'raven-js';
 import RavenVue from 'raven-js/plugins/vue';
 

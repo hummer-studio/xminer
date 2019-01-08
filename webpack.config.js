@@ -42,21 +42,13 @@ const config = {
               loader: 'babel-loader',
             },
             scss: isProduction ? ExtractTextPlugin.extract({
-              use: ['css-loader?minimize', 'autoprefixer-loader?browsers=last 2 versions', 'sass-loader'],
-              fallback: 'vue-style-loader'
+              use: ['css-loader?minimize', 'sass-loader', 'autoprefixer-loader?browsers=last 2 versions'],
+              fallback: ['vue-style-loader']
             }) : ['vue-style-loader', 'css-loader', 'sass-loader', 'autoprefixer-loader?browsers=last 2 versions'],
             sass: isProduction ? ExtractTextPlugin.extract({
               use: ['css-loader?minimize', 'sass-loader', 'autoprefixer-loader?browsers=last 2 versions'],
-              fallback: 'vue-style-loader'
-            }) : ['vue-style-loader', 'css-loader', 'sass-loader', 'autoprefixer-loader?browsers=last 2 versions'],            
-            // less: ExtractTextPlugin.extract({
-            //    use: ['css-loader?minimize', 'autoprefixer-loader', 'less-loader'],
-            //    fallback: 'vue-style-loader'
-            //  }),
-            // css: ExtractTextPlugin.extract({
-            //    use: ['css-loader', 'autoprefixer-loader', 'less-loader'],
-            //    fallback: 'vue-style-loader'
-            // })
+              fallback: ['vue-style-loader']
+            }) : ['vue-style-loader', 'css-loader', 'sass-loader', 'autoprefixer-loader?browsers=last 2 versions'],
           }
         }
       },
@@ -68,8 +60,8 @@ const config = {
       {
         test: /\.(scss|css)$/,
         loader: isProduction ? ExtractTextPlugin.extract({
-          use: ['css-loader?minimize', 'autoprefixer-loader?browsers=last 2 versions', 'sass-loader'],
-          fallback: 'vue-style-loader'
+          use: ['css-loader?minimize', 'sass-loader', 'autoprefixer-loader?browsers=last 2 versions'],
+          fallback: ['vue-style-loader']
         }) : ['vue-style-loader', 'css-loader', 'sass-loader', 'autoprefixer-loader?browsers=last 2 versions'],
       },
       {
@@ -139,19 +131,23 @@ if (isProduction){
 
   config.plugins.push(new webpack.optimize.OccurrenceOrderPlugin())
 }else{
+  config.plugins.push(new webpack.optimize.UglifyJsPlugin({
+    sourceMap: true,
+  }))
   config.output.filename = 'javascripts/bundle.js'
   config.output.publicPath = `http://localhost:${devPort}/static/dist/`  
 }
 
 
 const assets = [  
-  '//buttons.github.io/buttons.js'
+  `//files.coinmarketcap.com/static/widget/currency.js`
+  // '//buttons.github.io/buttons.js'
 ]
 
 config.plugins = config.plugins.concat([
   new HtmlWebpackPlugin({
     alwaysWriteToDisk: true,
-    filename: '../views/layout/vue.ejs',
+    filename: '../views/layout/default.ejs',
     template: './views/template/default.html',
     minify: isProduction ? {
         removeComments: true,
