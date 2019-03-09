@@ -1,5 +1,5 @@
 const staticCache = require('koa-static-cache')
 
 app.use(staticCache("./public", {
-  //prefix: BASE_NAME
+  maxAge: 3600 * 24 * 30, 
 }))
