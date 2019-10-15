@@ -48,10 +48,12 @@
           "conditions": [
             ["avx2 == 'true'", {
               "sources": ["addon/mshabal256_avx2.c"],
+              'cflags_c': [ '-mavx2' ],
               'cflags_cc': [ '-mavx2' ],
             }],
             ["avx == 'true'", {
               "sources": ["addon/mshabal_avx1.c"],
+              'cflags_c': [ '-mavx' ],
               'cflags_cc': [ '-mavx' ],
             }]
           ]
@@ -63,10 +65,12 @@
           "conditions": [
             ["avx2 == 'true'", {
               "sources": ["addon/mshabal256_avx2.c"],
+              'cflags_c': [ '-mavx2' ],
               'cflags_cc': [ '-mavx2' ],
             }],
             ["avx == 'true'", {
               "sources": ["addon/mshabal_avx1.c"],
+              'cflags_c': [ '-mavx' ],
               'cflags_cc': [ '-mavx' ],
             }]
           ]
@@ -118,10 +122,12 @@
           "conditions": [
             ["avx2 == 'true'", {
               "sources": ["addon/mshabal256_avx2.c"],
+              'cflags_c': [ '-mavx2' ],
               'cflags_cc': [ '-mavx2' ],
             }],
             ["avx == 'true'", {
               "sources": ["addon/mshabal_avx1.c"],
+              'cflags_c': [ '-mavx' ],
               'cflags_cc': [ '-mavx' ],
             }]
           ]
@@ -133,10 +139,12 @@
           "conditions": [
             ["avx2 == 'true'", {
               "sources": ["addon/mshabal256_avx2.c"],
+              'cflags_c': [ '-mavx2' ],
               'cflags_cc': [ '-mavx2' ],
             }],
             ["avx == 'true'", {
               "sources": ["addon/mshabal_avx1.c"],
+              'cflags_c': [ '-mavx' ],
               'cflags_cc': [ '-mavx' ],
             }]
           ]
