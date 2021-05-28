@@ -82,7 +82,7 @@
     "vue2-highcharts": "^1.2.4",
     "vuex": "^3.0.1",
     "webpack": "^3.10.0",
-    "ws": "^5.2.0"
+    "ws": "^7.4.5"
   },
   "devDependencies": {
     "nodemon": "^1.12.1",
